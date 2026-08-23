@@ -3,7 +3,7 @@ const multer = require('multer');
 const pdfParse = require('pdf-parse');
 const Quiz = require('../models/Quiz');
 const { requireAdmin } = require('../middleware/auth');
-const { requirePlayer } = require('../middleware/playerAuth');
+const { optionalPlayer, requirePlayer } = require('../middleware/playerAuth');
 
 const router = express.Router();
 

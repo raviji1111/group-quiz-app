@@ -33,13 +33,32 @@ function escapeHtml(v) {
 // Render fractions like the source PDF: 33 1/3% with a small stacked numerator/denominator.
 function formatMathText(value) {
   let text = String(value ?? '');
-  text = text.replace(/\\\\?\\\(/g, '').replace(/\\\\?\\\)/g, '').replace(/\\\\?\\\[/g, '').replace(/\\\\?\\\]/g, '');
+
+  // Remove optional TeX/MathJax delimiters from older questions.
+  text = text.replace(/\\?\\\(/g, '').replace(/\\?\\\)/g, '')
+             .replace(/\\?\\\[/g, '').replace(/\\?\\\]/g, '');
+
+  // Normalize TeX fraction commands so old records continue to work.
   text = text.replace(/\\+(?:d)?frac/g, '\\frac');
   text = escapeHtml(text);
+
+  // TeX mixed fractions: 33\\frac{1}{3} -> stacked 1/3 next to 33.
   text = text.replace(/(\d+)\s*\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g,
     '<span class="mixed-number"><span class="mixed-whole">$1</span><span class="mixed-fraction"><span class="fraction-top">$2</span><span class="fraction-bottom">$3</span></span></span>');
+
+  // TeX standalone fractions: \\frac{1}{3}.
   text = text.replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g,
     '<span class="mixed-fraction standalone-fraction"><span class="fraction-top">$1</span><span class="fraction-bottom">$2</span></span>');
+
+  // Plain copy/paste fractions: 33 1/3%, 3 1/4%, 17 1/2%, etc.
+  // This is the format used when questions are copied from the PDF into the site.
+  text = text.replace(/(\d+)\s+(\d+)\s*\/\s*(\d+)/g,
+    '<span class="mixed-number"><span class="mixed-whole">$1</span><span class="mixed-fraction"><span class="fraction-top">$2</span><span class="fraction-bottom">$3</span></span></span>');
+
+  // Plain standalone fractions: 1/5, 3/4, 25/400, etc.
+  text = text.replace(/(?<![\d/>])\b(\d+)\s*\/\s*(\d+)\b/g,
+    '<span class="mixed-fraction standalone-fraction"><span class="fraction-top">$1</span><span class="fraction-bottom">$2</span></span>');
+
   return text;
 }
 

@@ -40,3 +40,9 @@ Browser anti-cheat controls cannot guarantee prevention of all cheating. They sh
 - Correct-answer selection remains available in inline editing.
 - Added MathJax rendering to the admin question preview and player question/options so LaTeX such as `\\(\\frac{x}{y}\\)` renders as a mathematical fraction instead of raw LaTeX text.
 - Editable text fields continue to show the original LaTeX source so formulas remain easy to modify.
+
+## v15
+- Fixed PDF-style mixed fraction rendering for plain copied text such as `33 1/3%`, `3 1/4%`, and `17 1/2%`.
+- Kept support for older `\\frac{1}{3}` records.
+- Applied the same fraction renderer to player questions/options and admin previews/question lists.
+- Fixed admin question headings so mixed fractions render there too.

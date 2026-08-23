@@ -31,6 +31,32 @@ function parseAnswerKey(text) {
   return key;
 }
 
+// Keep bilingual questions in the same visual order as the source PDF:
+// English question first, Hindi question immediately below it.  pdf-parse can
+// sometimes return both languages on one physical line, so split at the first
+// Devanagari character instead of storing the two languages as one sentence.
+function splitBilingualLine(line) {
+  const value = String(line || '').trim();
+  const match = value.match(/[\u0900-\u097F]/);
+  if (!match) return [value];
+  const at = match.index;
+  if (at <= 0) return [value];
+  const english = value.slice(0, at).trim();
+  const hindi = value.slice(at).trim();
+  return english && hindi ? [english, hindi] : [value];
+}
+
+function appendQuestionLine(existing, line) {
+  const parts = splitBilingualLine(line);
+  const nonEmpty = parts.filter(Boolean);
+  if (!nonEmpty.length) return existing;
+  const incomingHasHindi = nonEmpty.some(part => /[\u0900-\u097F]/.test(part));
+  const existingHasHindi = /[\u0900-\u097F]/.test(existing);
+  // A language switch means the next language belongs on the next line.
+  const separator = existing && incomingHasHindi !== existingHasHindi ? '\n' : ' ';
+  return existing ? `${existing}${separator}${nonEmpty.join(' ')}`.trim() : nonEmpty.join(' ').trim();
+}
+
 function parsePdfQuestions(text, suppliedAnswerKey = '', selection = {}) {
   const raw = String(text || '').replace(/\r/g, '').replace(/\u00a0/g, ' ');
   const lines = raw.split('\n').map(line => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
@@ -87,7 +113,7 @@ function parsePdfQuestions(text, suppliedAnswerKey = '', selection = {}) {
       finish();
       current = {
         number: Number(qMatch[1]),
-        question: qMatch[2].trim(),
+        question: splitBilingualLine(qMatch[2].trim()).join('\n'),
         options: ['', '', '', '']
       };
       option = null;
@@ -110,7 +136,7 @@ function parsePdfQuestions(text, suppliedAnswerKey = '', selection = {}) {
     // Preserve both English and Hindi lines. If we are inside an option, append
     // to that option; otherwise append to the question text.
     if (option !== null) current.options[option] = `${current.options[option]} ${line}`.trim();
-    else current.question = `${current.question} ${line}`.trim();
+    else current.question = appendQuestionLine(current.question, line);
   }
   finish();
 

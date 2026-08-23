@@ -85,3 +85,9 @@ Browser anti-cheat controls cannot guarantee prevention of all cheating. They sh
 - Fixed question-number detection so decimal values such as `12.75%` are not mistaken for question 12.
 - Improved PDF import messages with detected/imported counts and answer-key matching.
 - Added PDF import controls and language-preservation guidance to the admin UI.
+
+## v20.1 — Bilingual PDF question line order
+- PDF → Quiz now keeps English and Hindi question text on separate lines, with English first and Hindi immediately below.
+- If a PDF extractor places English + Hindi on the same physical line, the importer splits them at the first Devanagari character.
+- Player and admin question previews preserve the imported line break instead of collapsing both languages into one sentence.
+- Existing A/B/C/D parsing, question selection and answer-key matching remain unchanged.

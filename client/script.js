@@ -60,6 +60,12 @@ function formatMathText(value) {
   text = text.replace(/(?<![\d/>])\b(\d+)\s*\/\s*(\d+)\b/g,
     '<span class="mixed-fraction standalone-fraction"><span class="fraction-top">$1</span><span class="fraction-bottom">$2</span></span>');
 
+  // Keep bilingual questions in two clean lines. Many PDF extractors return
+  // English + Hindi on one line (e.g. "...is? किसी..."). Split only at the
+  // English-to-Devanagari boundary so spaces inside the Hindi sentence remain intact.
+  text = text.replace(/([A-Za-z0-9%\)\]\?\!\.:;])\s+(?=[\u0900-\u097F])/g, '$1<br class="bilingual-break">');
+  text = text.replace(/\r?\n/g, '<br class="bilingual-break">');
+
   return text;
 }
 
@@ -79,6 +85,26 @@ const warningModal = $('warningModal'), warningMessage = $('warningMessage'), wa
 if (warningModal) warningModal.classList.remove('show');
 const violationCount = $('violationCount'), maxViolations = $('maxViolations'), warningSound = $('warningSound');
 const accountName = $('accountName'), accountEmail = $('accountEmail'), accountPassword = $('accountPassword');
+
+// Player theme: light/dark mode, remembered on this browser.
+const themeToggle = $('themeToggle');
+const savedTheme = localStorage.getItem('groupQuizTheme');
+if (savedTheme === 'dark') document.body.classList.add('player-dark');
+if (themeToggle) {
+  const syncThemeIcon = () => {
+    const dark = document.body.classList.contains('player-dark');
+    themeToggle.textContent = dark ? '☀️' : '🌙';
+    themeToggle.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+    themeToggle.title = dark ? 'Light mode' : 'Dark mode';
+  };
+  syncThemeIcon();
+  themeToggle.addEventListener('click', () => {
+    document.body.classList.toggle('player-dark');
+    localStorage.setItem('groupQuizTheme', document.body.classList.contains('player-dark') ? 'dark' : 'light');
+    syncThemeIcon();
+  });
+}
+
 
 async function api(path, options = {}) {
   const res = await fetch(`${API}${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...(playerToken ? { Authorization: `Bearer ${playerToken}` } : {}), ...(options.headers || {}) } });

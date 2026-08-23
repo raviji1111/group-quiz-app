@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 
 const sessionSchema = new mongoose.Schema({
   quiz: { type: mongoose.Schema.Types.ObjectId, ref: 'Quiz', required: true },
+  mode: { type: String, enum: ['practice', 'live'], default: 'practice' },
+  liveRoundId: { type: String, default: null },
   player: { type: mongoose.Schema.Types.ObjectId, ref: 'Player', default: null },
   playerName: { type: String, required: true, trim: true, maxlength: 30 },
   startedAt: { type: Date, required: true },

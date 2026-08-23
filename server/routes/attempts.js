@@ -13,46 +13,81 @@ router.post('/start', optionalPlayer, async (req, res) => {
     const quizId = String(req.body.quizId || '');
     const quiz = await Quiz.findOne({ _id: quizId, isPublished: true });
     if (!quiz) return res.status(404).json({ message: 'Quiz not found.' });
-    if (quiz.liveStatus === 'live') {
+
+    const isLive = quiz.liveStatus === 'live' || req.body.live === true;
+    const now = new Date();
+
+    if (isLive) {
       const liveEnds = quiz.liveEndsAt ? new Date(quiz.liveEndsAt) : null;
-      if (!liveEnds || liveEnds <= new Date()) { quiz.liveStatus = 'ended'; await quiz.save(); return res.status(409).json({ message: 'This live quiz has ended.' }); }
+      if (quiz.liveStatus !== 'live' || !liveEnds || liveEnds <= now) {
+        if (quiz.liveStatus === 'live') { quiz.liveStatus = 'ended'; await quiz.save(); }
+        return res.status(409).json({ code: 'LIVE_ENDED', message: 'This live quiz has ended.' });
+      }
     }
-    if (quiz.liveStatus === 'ended' && req.body.live === true) return res.status(409).json({ message: 'This live quiz has ended.' });
 
     const playerId = req.player?.id || null;
     if (!playerId) return res.status(401).json({ code: 'AUTH_REQUIRED', message: 'Please register or login before attempting a quiz.' });
     const player = await Player.findById(playerId).select('active name');
     if (!player) return res.status(401).json({ code: 'AUTH_REQUIRED', message: 'Your account could not be found. Please register or login again.' });
     if (player.active === false) return res.status(403).json({ message: 'Your account is suspended. Please contact the administrator.' });
+
     const playerName = player.name;
-    const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const safePlayerName = escapeRegex(playerName);
-    const playerFilter = playerId ? { player: playerId } : { player: null, playerName: new RegExp(`^${safePlayerName}$`, 'i') };
-    const existing = await QuizSession.findOne({ quiz: quiz._id, ...playerFilter, submitted: false }).sort({ createdAt: -1 });
-    const isLiveQuiz = quiz.liveStatus === 'live';
-    if (isLiveQuiz) {
-      const completed = await Attempt.findOne({ quiz: quiz._id, ...(playerId ? { player: playerId } : { player: null, playerName: new RegExp(`^${safePlayerName}$`, 'i') }) });
-      if (completed) return res.status(409).json({ message: 'You have already attempted this live quiz.' });
+    const playerFilter = { quiz: quiz._id, player: playerId };
+
+    // Practice/uploaded quizzes can be attempted repeatedly.
+    // A live quiz can only be joined once during the current live round.
+    const liveRoundId = isLive && quiz.liveStartedAt ? new Date(quiz.liveStartedAt).toISOString() : null;
+    const sessionFilter = isLive
+      ? { ...playerFilter, mode: 'live', liveRoundId }
+      : { ...playerFilter, mode: 'practice' };
+
+    const existing = await QuizSession.findOne(sessionFilter).sort({ createdAt: -1 });
+
+    if (isLive) {
+      if (existing?.submitted) return res.status(409).json({ code: 'LIVE_ALREADY_ATTEMPTED', message: 'You have already joined this live quiz. A live quiz can be attempted only once.' });
+      if (existing) {
+        if (now > existing.expiresAt) return res.status(409).json({ code: 'LIVE_EXPIRED', message: 'Your live quiz session has expired.' });
+        return res.json({ sessionId: existing._id, quizId: existing.quiz, status: new Date(existing.startedAt) > now ? 'waiting' : 'started', startedAt: existing.startedAt, expiresAt: existing.expiresAt, time: quiz.time, maxViolations: quiz.maxViolations, currentQuestion: existing.currentQuestion, answers: existing.answers, violations: existing.violations, violationReasons: existing.violationReasons, liveStatus: quiz.liveStatus, mode: 'live' });
+      }
+    } else if (existing) {
+      if (existing.submitted) {
+        // A completed practice quiz is still allowed to start again.
+        // Never reuse a submitted practice session.
+      } else {
+        if (now > existing.expiresAt) existing.submitted = true;
+        else return res.json({ sessionId: existing._id, quizId: existing.quiz, status: new Date(existing.startedAt) > now ? 'waiting' : 'started', startedAt: existing.startedAt, expiresAt: existing.expiresAt, time: quiz.time, maxViolations: quiz.maxViolations, currentQuestion: existing.currentQuestion, answers: existing.answers, violations: existing.violations, violationReasons: existing.violationReasons, liveStatus: quiz.liveStatus, mode: 'practice' });
+      }
     }
 
-    const now = new Date();
     const joinStart = quiz.joinStartAt ? new Date(quiz.joinStartAt) : null;
     const joinEnd = quiz.joinEndAt ? new Date(quiz.joinEndAt) : null;
     const scheduledStart = quiz.scheduledStartAt ? new Date(quiz.scheduledStartAt) : null;
 
-    if (!existing) {
+    if (!isLive) {
       if (joinStart && now < joinStart) return res.status(403).json({ code: 'JOIN_NOT_OPEN', message: `Joining opens at ${joinStart.toLocaleString()}.` });
       if (joinEnd && now > joinEnd) return res.status(403).json({ code: 'JOIN_CLOSED', message: 'Joining for this quiz is closed.' });
-      const startAt = scheduledStart || now;
-      const expiresAt = new Date(startAt.getTime() + quiz.time * 60 * 1000);
-      const session = await QuizSession.create({ quiz: quiz._id, playerName, player: playerId, startedAt: startAt, expiresAt, joinedAt: now, answers: Array(quiz.questions.length).fill(-1) });
-      const waiting = startAt > now;
-      return res.status(201).json({ sessionId: session._id, quizId: quiz._id, status: waiting ? 'waiting' : 'started', startedAt: startAt, expiresAt, time: quiz.time, maxViolations: quiz.maxViolations, currentQuestion: 0, answers: session.answers, liveStatus: quiz.liveStatus });
     }
 
-    const waiting = new Date(existing.startedAt) > now;
-    if (!waiting && now > existing.expiresAt) return res.status(409).json({ message: 'This quiz session has expired.' });
-    return res.json({ sessionId: existing._id, quizId: existing.quiz, status: waiting ? 'waiting' : 'started', startedAt: existing.startedAt, expiresAt: existing.expiresAt, time: quiz.time, maxViolations: quiz.maxViolations, currentQuestion: existing.currentQuestion, answers: existing.answers, violations: existing.violations, violationReasons: existing.violationReasons });
+    // For live mode, the timer starts when the admin starts the live round.
+    // Leaving the page does not reset the timer; the same session is resumed until it expires.
+    const startAt = isLive ? new Date(quiz.liveStartedAt || now) : (scheduledStart || now);
+    const expiresAt = isLive
+      ? new Date(quiz.liveEndsAt)
+      : new Date(startAt.getTime() + quiz.time * 60 * 1000);
+
+    const session = await QuizSession.create({
+      quiz: quiz._id,
+      mode: isLive ? 'live' : 'practice',
+      liveRoundId,
+      playerName,
+      player: playerId,
+      startedAt: startAt,
+      expiresAt,
+      joinedAt: now,
+      answers: Array(quiz.questions.length).fill(-1)
+    });
+    const waiting = startAt > now;
+    return res.status(201).json({ sessionId: session._id, quizId: quiz._id, status: waiting ? 'waiting' : 'started', startedAt: startAt, expiresAt, time: quiz.time, maxViolations: quiz.maxViolations, currentQuestion: 0, answers: session.answers, liveStatus: quiz.liveStatus, mode: isLive ? 'live' : 'practice' });
   } catch (error) {
     console.error(error);
     res.status(400).json({ message: 'Could not join quiz.' });
@@ -112,7 +147,7 @@ router.post('/', async (req, res) => {
     const total = quiz.questions.length;
     const percentage = Math.round((score / total) * 10000) / 100;
 
-    const attempt = await Attempt.create({ quiz: quiz._id, player: session.player || null, playerName: session.playerName, answers: safeAnswers, score, total, percentage, violations, violationReasons, status });
+    const attempt = await Attempt.create({ quiz: quiz._id, player: session.player || null, playerName: session.playerName, mode: session.mode || 'practice', liveRoundId: session.liveRoundId || null, answers: safeAnswers, score, total, percentage, violations, violationReasons, status });
     session.submitted = true;
     session.answers = safeAnswers;
     session.violations = violations;

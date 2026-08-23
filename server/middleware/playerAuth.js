@@ -14,7 +14,13 @@ async function optionalPlayer(req, res, next) {
         req.authError = { code: 'SESSION_REPLACED', message: 'This account is already active on another device. Please login again.' };
       }
     }
-  } catch {}
+  } catch (error) {
+    if (error && error.name === 'TokenExpiredError') {
+      req.authError = { code: 'SESSION_EXPIRED', message: 'Session expired, please login again.' };
+    } else if (header.startsWith('Bearer ')) {
+      req.authError = { code: 'INVALID_SESSION', message: 'Session expired, please login again.' };
+    }
+  }
   next();
 }
 

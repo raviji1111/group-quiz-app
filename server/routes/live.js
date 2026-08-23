@@ -20,29 +20,21 @@ router.get('/active', requirePlayer, async (req, res) => {
 
 router.get('/:id/board', requirePlayer, async (req, res) => {
   try {
-    const quiz = await Quiz.findOne({ _id: req.params.id, isPublished: true }).select('_id title subject topic liveStatus liveStartedAt liveEndsAt showLiveScore showLeaderboard questions.answer questions.question');
+    const quiz = await Quiz.findOne({ _id: req.params.id, isPublished: true }).select('_id title subject topic liveStatus liveEndsAt showLiveScore showLeaderboard questions.answer questions.question');
     if (!quiz) return res.status(404).json({ message: 'Live quiz not found.' });
-    if (!quiz.liveStartedAt) return res.status(409).json({ message: 'This quiz has not been started live yet.' });
-
-    const now = Date.now();
-    const sessions = await QuizSession.find({ quiz: quiz._id }).select('player playerName answers startedAt joinedAt submitted updatedAt');
+    if (quiz.liveStatus !== 'live' || !quiz.liveEndsAt || new Date(quiz.liveEndsAt) <= new Date()) return res.status(409).json({ message: 'This live quiz is not active.' });
+    const sessions = await QuizSession.find({ quiz: quiz._id, submitted: false }).select('player playerName answers startedAt joinedAt');
     const rows = sessions.map(s => {
       let score = 0;
       quiz.questions.forEach((q, i) => { if (s.answers?.[i] === q.answer) score++; });
       const answered = (s.answers || []).filter(a => Number.isInteger(a) && a >= 0).length;
-      const started = new Date(s.startedAt).getTime();
-      const end = s.submitted ? new Date(s.updatedAt || now).getTime() : Math.min(now, quiz.liveEndsAt ? new Date(quiz.liveEndsAt).getTime() : now);
-      return { playerId: s.player ? String(s.player) : null, playerName: s.playerName, score, total: quiz.questions.length, answered, elapsedSeconds: Math.max(0, Math.floor((end - started) / 1000)), submitted: !!s.submitted, joinedAt: s.joinedAt };
-    }).sort((a,b) => b.score-a.score || b.answered-a.answered || a.elapsedSeconds-b.elapsedSeconds || new Date(a.joinedAt)-new Date(b.joinedAt));
-
+      return { playerName: s.playerName, score, total: quiz.questions.length, answered, joinedAt: s.joinedAt };
+    }).sort((a,b) => b.score-a.score || a.answered-b.answered || new Date(a.joinedAt)-new Date(b.joinedAt));
     const board = quiz.showLeaderboard ? rows.slice(0, 100).map((r,i)=>({...r,rank:i+1})) : [];
     let me = null;
-    const my = rows.find(r => r.playerId && String(r.playerId) === String(req.player.id));
-    if (my) {
-      const rank = rows.indexOf(my) + 1;
-      me = { ...my, rank };
-    }
-    res.json({ quiz: { _id: quiz._id, title: quiz.title, subject: quiz.subject, topic: quiz.topic, liveStatus: quiz.liveStatus, liveEndsAt: quiz.liveEndsAt, showLiveScore: quiz.showLiveScore, showLeaderboard: quiz.showLeaderboard }, leaderboard: board, me, participants: sessions.length });
+    const my = sessions.find(s => String(s.player) === String(req.player.id));
+    if (my) { let score=0; quiz.questions.forEach((q,i)=>{if(my.answers?.[i]===q.answer)score++;}); me={score,total:quiz.questions.length,answered:(my.answers||[]).filter(a=>a>=0).length}; }
+    res.json({ quiz: { _id: quiz._id, title: quiz.title, subject: quiz.subject, topic: quiz.topic, liveEndsAt: quiz.liveEndsAt, showLiveScore: quiz.showLiveScore, showLeaderboard: quiz.showLeaderboard }, leaderboard: board, me, participants: sessions.length });
   } catch(e) { res.status(400).json({ message: 'Could not load live board.' }); }
 });
 

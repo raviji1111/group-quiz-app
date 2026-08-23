@@ -1,3 +1,10 @@
+
+## v21.2 — Live Join / Repeat Practice Fix
+- Uploaded/practice quizzes can be attempted repeatedly.
+- Live quizzes are limited to one attempt per live round per account.
+- Live Join now sends an explicit live-session request and uses the admin-defined live start/end window.
+- Leaving a live quiz does not reset its timer; the existing live session can be resumed until expiry.
+- Prevents a previous practice attempt from blocking a later live session of the same quiz.
 # v20.3 fixed
 
 - PDF importer now keeps English and Hindi in separate question fields and renders English first, Hindi directly below.
@@ -100,12 +107,3 @@ Browser anti-cheat controls cannot guarantee prevention of all cheating. They sh
 - If a PDF extractor places English + Hindi on the same physical line, the importer splits them at the first Devanagari character.
 - Player and admin question previews preserve the imported line break instead of collapsing both languages into one sentence.
 - Existing A/B/C/D parsing, question selection and answer-key matching remain unchanged.
-
-## v21 — compact responsive player + live leaderboard
-- Reduced quiz question/option typography for a more compact desktop and mobile attempt screen.
-- Added a dedicated user-side Live Leaderboard section with rank, score, attempted questions and elapsed time.
-- Added leaderboard access directly from each active live-quiz card.
-- Added responsive navigation that remains accessible on phones instead of disappearing completely.
-- Kept the player dark/light theme across the new leaderboard UI.
-- Added live leaderboard polling during live attempts.
-- Normal uploaded/practice quizzes are no longer limited to one completed attempt; live quizzes remain one-attempt-per-player.

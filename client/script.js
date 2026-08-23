@@ -158,13 +158,13 @@ function updateAccountUI() {
     if ($('accountStatusMirror')) $('accountStatusMirror').textContent = `Signed in as ${loggedPlayer.name}. Choose a subject or topic to begin.`;
     accountBtn.textContent = 'Account';
     playerNameInput.value = loggedPlayer.name;
-    startBtn.disabled = false;
+    if (startBtn) startBtn.disabled = false;
   } else {
     accountStatus.textContent = 'Registration required';
     if ($('accountStatusMirror')) $('accountStatusMirror').textContent = 'Please register or login to attempt quizzes.';
     accountBtn.textContent = 'Login / Register';
     playerNameInput.value = '';
-    startBtn.disabled = true;
+    if (startBtn) startBtn.disabled = true;
   }
 }
 
@@ -240,7 +240,7 @@ async function loadQuizList() {
     quizSelect.innerHTML = '';
     if (!quizzes.length) {
       quizSelect.innerHTML = '<option value="">No published quizzes</option>';
-      startBtn.disabled = true;
+      if (startBtn) startBtn.disabled = true;
       renderSubjectGrid([]); renderQuizCards([]); renderLiveCards([]);
       return;
     }
@@ -258,7 +258,7 @@ async function loadQuizList() {
     await loadLiveQuizzes();
   } catch (e) {
     quizSelect.innerHTML = '<option value="">Could not load quizzes</option>';
-    startBtn.disabled = true;
+    if (startBtn) startBtn.disabled = true;
     renderSubjectGrid([]);
     renderQuizCards([]);
     renderLiveCards([]);
@@ -352,14 +352,14 @@ async function startQuiz() {
   if (!playerName) return playerMessage('Please enter your name.', true);
   if (!quizId) return playerMessage('Please select a quiz.', true);
   try {
-    startBtn.disabled = true;
+    if (startBtn) startBtn.disabled = true;
     const data = await api(`/quizzes/${quizId}/public`);
     quiz = data.quiz;
-    const session = await api('/attempts/start', { method: 'POST', body: JSON.stringify({ quizId, playerName }) });
+    const session = await api('/attempts/start', { method: 'POST', body: JSON.stringify({ quizId, playerName, live: quiz?.liveStatus === 'live' }) });
     playerName = session.playerName || playerName;
     localStorage.setItem(SESSION_STORAGE_KEY, String(session.sessionId));
     await setupSession(session, quiz);
-  } catch (e) { playerMessage(e.message, true); } finally { startBtn.disabled = false; }
+  } catch (e) { playerMessage(e.message, true); } finally { if (startBtn) startBtn.disabled = false; }
 }
 
 async function setupSession(session, quizData) {
@@ -377,10 +377,10 @@ async function setupSession(session, quizData) {
   if (session.status === 'waiting' || startAt > now) {
     quizStarted = false;
     startScreen.classList.add('active'); quizScreen.classList.remove('active'); resultScreen.classList.remove('active');
-    startBtn.disabled = true;
+    if (startBtn) startBtn.disabled = true;
     const tick = () => {
       const remaining = Math.max(0, startAt - Date.now());
-      if (remaining <= 0) { startBtn.disabled = false; beginActiveQuiz(session); return; }
+      if (remaining <= 0) { if (startBtn) startBtn.disabled = false; beginActiveQuiz(session); return; }
       const seconds = Math.ceil(remaining / 1000);
       const mins = Math.floor(seconds / 60), secs = seconds % 60;
       playerMessage(`Joined successfully. Quiz starts in ${mins}:${String(secs).padStart(2,'0')}. Keep this page open.`);
@@ -412,6 +412,16 @@ async function resumeStoredSession() {
     const data = await api(`/attempts/session/${encodeURIComponent(stored)}`);
     playerName = playerNameInput.value.trim() || loggedPlayer?.name || '';
     if (data.session.submitted) { localStorage.removeItem(SESSION_STORAGE_KEY); return; }
+    const startAt = new Date(data.session.startedAt).getTime();
+    if (data.session.status === 'waiting' || startAt > Date.now()) {
+      // Do not resurrect an old scheduled/joining session when the player simply
+      // opens the quiz hub. A published practice quiz should start only when the
+      // player explicitly presses its Start button.
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+      clearTimeout(waitingTimer);
+      if (playerMessage) playerMessage('', false);
+      return;
+    }
     quizSelect.value = data.session.quizId;
     playerNameInput.value = playerName || playerNameInput.value;
     await setupSession(data.session, data.quiz);
@@ -420,7 +430,7 @@ async function resumeStoredSession() {
   }
 }
 
-startBtn.addEventListener('click', startQuiz);
+startBtn?.addEventListener('click', startQuiz);
 playerNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') startQuiz(); });
 
 function loadQuestion() {

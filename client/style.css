@@ -764,3 +764,13 @@ td { color: #e2e8f0; font-size: 14px; }
     .inline-edit-footer { align-items: stretch; flex-direction: column; }
     .inline-correct-field { width: 100%; }
 }
+
+
+/* PDF-style mixed fractions used consistently in admin and player views. */
+.mixed-number{display:inline-flex;align-items:center;gap:.08em;white-space:nowrap;vertical-align:middle;line-height:1;}
+.mixed-fraction{display:inline-flex;flex-direction:column;justify-content:center;align-items:center;vertical-align:middle;line-height:1;min-width:1.05em;font-size:.72em;margin:0 .06em;position:relative;top:-.02em;}
+.fraction-top,.fraction-bottom{display:block;padding:0 .12em;line-height:1.05;text-align:center;white-space:nowrap;}
+.fraction-top{border-bottom:1px solid currentColor;padding-bottom:.08em;}
+.fraction-bottom{padding-top:.08em;}
+.standalone-fraction{font-size:.78em;}
+.question-item h3 .mixed-fraction,.question-option .mixed-fraction,.option .mixed-fraction{font-size:.72em;}

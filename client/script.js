@@ -26,13 +26,27 @@ let loggedPlayer = JSON.parse(localStorage.getItem('groupQuizPlayer') || 'null')
 const $ = id => document.getElementById(id);
 
 
-function typesetMath(root = document) {
-  if (!root) return;
-  if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
-    window.MathJax.typesetClear?.([root]);
-    window.MathJax.typesetPromise([root]).catch(() => {});
-  }
+function escapeHtml(v) {
+  return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 }
+
+// Render fractions like the source PDF: 33 1/3% with a small stacked numerator/denominator.
+function formatMathText(value) {
+  let text = String(value ?? '');
+  text = text.replace(/\\\\?\\\(/g, '').replace(/\\\\?\\\)/g, '').replace(/\\\\?\\\[/g, '').replace(/\\\\?\\\]/g, '');
+  text = text.replace(/\\+(?:d)?frac/g, '\\frac');
+  text = escapeHtml(text);
+  text = text.replace(/(\d+)\s*\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g,
+    '<span class="mixed-number"><span class="mixed-whole">$1</span><span class="mixed-fraction"><span class="fraction-top">$2</span><span class="fraction-bottom">$3</span></span></span>');
+  text = text.replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g,
+    '<span class="mixed-fraction standalone-fraction"><span class="fraction-top">$1</span><span class="fraction-bottom">$2</span></span>');
+  return text;
+}
+
+function setFormattedText(el, value) {
+  if (el) el.innerHTML = formatMathText(value);
+}
+
 const startScreen = $('startScreen'), quizScreen = $('quizScreen'), resultScreen = $('resultScreen');
 const quizSelect = $('quizSelect'), playerNameInput = $('playerName'), startBtn = $('startBtn');
 // Keep a single quiz selector on the player screen; older UI markup may contain a duplicate.
@@ -161,17 +175,15 @@ function loadQuestion() {
   const q = questions[currentQuestion];
   if (!q) return finishQuiz();
   selectedAnswer = answers[currentQuestion] >= 0 ? answers[currentQuestion] : null;
-  questionNumber.textContent = currentQuestion + 1; questionText.textContent = q.question; optionsContainer.innerHTML = '';
+  questionNumber.textContent = currentQuestion + 1; setFormattedText(questionText, q.question); optionsContainer.innerHTML = '';
   q.options.forEach((option, index) => {
-    const button = document.createElement('button'); button.type = 'button'; button.className = 'option'; button.textContent = `${String.fromCharCode(65 + index)}. ${option}`;
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'option'; button.innerHTML = `${String.fromCharCode(65 + index)}. ${formatMathText(option)}`;
     if (index === selectedAnswer) button.classList.add('selected');
     button.addEventListener('click', () => selectAnswer(index)); optionsContainer.appendChild(button);
   });
   nextBtn.disabled = selectedAnswer === null;
   nextBtn.textContent = currentQuestion === questions.length - 1 ? 'Submit Quiz' : 'Next';
   progressBar.style.width = `${((currentQuestion + 1) / questions.length) * 100}%`;
-  typesetMath(questionText);
-  typesetMath(optionsContainer);
 }
 function selectAnswer(index) {
   if (!quizStarted) return;

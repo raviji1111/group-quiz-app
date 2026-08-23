@@ -6,13 +6,33 @@ let quizzes = [];
 const $ = id => document.getElementById(id);
 
 
-// Render LaTeX/math notation in admin previews without changing the editable source text.
-function typesetMath(root = document) {
-  if (!root) return;
-  if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
-    window.MathJax.typesetClear?.([root]);
-    window.MathJax.typesetPromise([root]).catch(() => {});
-  }
+// Render legacy TeX fractions as PDF-style mixed fractions everywhere in the UI.
+// Editing fields keep the original source; only visible previews are formatted.
+function escapeHtml(v) {
+  return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+}
+
+function formatMathText(value) {
+  let text = String(value ?? '');
+  // Remove optional MathJax delimiters left by older records.
+  text = text.replace(/\\\\?\\\(/g, '').replace(/\\\\?\\\)/g, '').replace(/\\\\?\\\[/g, '').replace(/\\\\?\\\]/g, '');
+  // Normalize one or more literal backslashes before frac/dfrac.
+  text = text.replace(/\\+(?:d)?frac/g, '\\frac');
+  text = escapeHtml(text);
+
+  // Mixed fraction: 33\\frac{1}{3} -> 33 + stacked 1/3, matching the PDF style.
+  text = text.replace(/(\d+)\s*\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g,
+    '<span class="mixed-number"><span class="mixed-whole">$1</span><span class="mixed-fraction"><span class="fraction-top">$2</span><span class="fraction-bottom">$3</span></span></span>');
+
+  // Standalone fraction: \\frac{1}{3} -> stacked fraction.
+  text = text.replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g,
+    '<span class="mixed-fraction standalone-fraction"><span class="fraction-top">$1</span><span class="fraction-bottom">$2</span></span>');
+
+  return text;
+}
+
+function setFormattedText(el, value) {
+  if (el) el.innerHTML = formatMathText(value);
 }
 
 function headers() {
@@ -102,9 +122,9 @@ function renderQuestions() {
   $('questionList').innerHTML = questions.length ? '' : '<div class="empty-state">No questions added yet.</div>';
   questions.forEach((q, index) => {
     const item = document.createElement('div'); item.className = 'question-item';
-    const title = document.createElement('h3'); title.textContent = `${index + 1}. ${q.question}`; item.appendChild(title);
+    const title = document.createElement('h3'); title.innerHTML = `${index + 1}. ${formatMathText(q.question)}`; item.appendChild(title);
     const options = document.createElement('div'); options.className = 'question-options';
-    q.options.forEach((opt, oi) => { const el = document.createElement('div'); el.className = 'question-option' + (oi === q.answer ? ' correct-option' : ''); el.textContent = `${String.fromCharCode(65 + oi)}. ${opt}`; options.appendChild(el); });
+    q.options.forEach((opt, oi) => { const el = document.createElement('div'); el.className = 'question-option' + (oi === q.answer ? ' correct-option' : ''); el.innerHTML = `${String.fromCharCode(65 + oi)}. ${formatMathText(opt)}`; options.appendChild(el); });
     item.appendChild(options);
     const actions = document.createElement('div'); actions.className = 'question-actions';
     const del = document.createElement('button'); del.className = 'small-btn delete-btn'; del.textContent = 'Delete'; del.onclick = () => { questions.splice(index, 1); renderQuestions(); };
@@ -296,7 +316,7 @@ function renderQuestions() {
     q.options.forEach((opt, oi) => {
       const el = document.createElement('div');
       el.className = 'question-option' + (oi === q.answer ? ' correct-option' : '');
-      el.textContent = `${String.fromCharCode(65 + oi)}. ${opt}`;
+      el.innerHTML = `${String.fromCharCode(65 + oi)}. ${formatMathText(opt)}`;
       options.appendChild(el);
     });
     item.appendChild(options);
@@ -320,7 +340,6 @@ function renderQuestions() {
     actions.append(edit, del);
     item.appendChild(actions);
     $('questionList').appendChild(item);
-    typesetMath(item);
   });
 }
 
@@ -495,7 +514,7 @@ async function showAttemptDetails(id){
     const data=await api(`/attempts/${id}`),a=data.attempt;$('attemptMeta').textContent=`${a.playerName} · ${a.quizName} · ${new Date(a.createdAt).toLocaleString()}`;
     let html=`<div class="attempt-summary"><div class="attempt-stat"><small>Score</small><strong>${a.score}/${a.total}</strong></div><div class="attempt-stat"><small>Percentage</small><strong>${a.percentage}%</strong></div><div class="attempt-stat"><small>Violations</small><strong>${a.violations}</strong></div><div class="attempt-stat"><small>Status</small><strong>${a.status}</strong></div></div>`;
     if(a.violationReasons?.length) html+=`<div class="attempt-question"><strong>Violation Reasons</strong><div class="answer-line">${a.violationReasons.map(x=>escapeHtml(x)).join('<br>')}</div></div>`;
-    html+=a.details.map(q=>{const selected=q.selectedAnswer>=0?`${String.fromCharCode(65+q.selectedAnswer)}. ${escapeHtml(q.options[q.selectedAnswer]||'')}`:'Skipped';const correct=`${String.fromCharCode(65+q.correctAnswer)}. ${escapeHtml(q.options[q.correctAnswer]||'')}`;return `<div class="attempt-question ${q.result}"><strong>${q.number}. ${escapeHtml(q.question)}</strong><div class="answer-line">Selected: <strong>${selected}</strong></div><div class="answer-line">Correct: <strong>${correct}</strong></div></div>`}).join('');
+    html+=a.details.map(q=>{const selected=q.selectedAnswer>=0?`${String.fromCharCode(65+q.selectedAnswer)}. ${formatMathText(q.options[q.selectedAnswer]||'')}`:'Skipped';const correct=`${String.fromCharCode(65+q.correctAnswer)}. ${formatMathText(q.options[q.correctAnswer]||'')}`;return `<div class="attempt-question ${q.result}"><strong>${q.number}. ${formatMathText(q.question)}</strong><div class="answer-line">Selected: <strong>${selected}</strong></div><div class="answer-line">Correct: <strong>${correct}</strong></div></div>`}).join('');
     $('attemptDetailBody').innerHTML=html;$('attemptModal').classList.remove('hidden');
   }catch(e){showMessage(e.message,true)}
 }

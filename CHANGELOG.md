@@ -1,3 +1,11 @@
+## v14 — PDF-style mixed-fraction rendering
+
+- Fixed math display in both the admin question list and the user quiz screen.
+- Legacy TeX such as `33\frac{1}{3}%` now renders as a compact PDF-style mixed fraction (33 with a stacked 1/3).
+- Supports old records with one or multiple backslashes and optional TeX delimiters.
+- Keeps the original question source unchanged inside edit fields.
+- Removed the previous MathJax-dependent preview path to keep admin and player rendering consistent.
+
 # Upgrade completed
 
 ## Original prototype checked

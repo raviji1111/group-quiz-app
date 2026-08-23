@@ -513,81 +513,73 @@ $('cancelQuestionEditBtn').addEventListener('click',cancelQuestionEdit);
 // ===== BULK COPY/PASTE IMPORT =====
 function parseAnswerKeyText(text) {
   const key = {};
-  const source = String(text || '');
-  // Only parse an answer key when an explicit key heading exists. This prevents
-  // normal question numbers/options from being mistaken for answer-key pairs.
-  const marker = source.match(/(?:answer\s*key|answers?|उत्तर\s*कुंजी|उत्तर\s*उत्तर)/i);
-  if (!marker) return key;
-  const region = source.slice(marker.index);
-  const re = /(?:^|\s|[,;|])(?:Q\s*)?(\d{1,3})\s*[:.)-]?\s*\(?([ABCD])\)?(?=\s|[,;|]|$)/gi;
-  let m;
-  while ((m = re.exec(region))) key[Number(m[1])] = 'ABCD'.indexOf(m[2].toUpperCase());
+  const source = String(text || '').replace(/\r/g, '');
+
+  // 1) Explicit per-question answers, e.g. "Answer: B", "Ans - C",
+  //    "Correct Answer: D". These are the most reliable source for Bulk Paste.
+  const lines = source.split('\n');
+  let currentQuestion = null;
+  for (const raw of lines) {
+    const line = raw.trim();
+    const q = line.match(/^(?:Q(?:uestion)?\s*)?(\d+)\s*[.)-]\s*(.*)$/i);
+    if (q) currentQuestion = Number(q[1]);
+    const ans = line.match(/^(?:answer|ans|correct\s*answer|उत्तर|सही\s*उत्तर)\s*(?:key)?\s*[:=\-]\s*\(?\s*([ABCD])\s*\)?\s*$/i);
+    if (ans && Number.isInteger(currentQuestion)) {
+      key[currentQuestion] = 'ABCD'.indexOf(ans[1].toUpperCase());
+    }
+  }
+
+  // 2) A separate answer-key section, e.g.:
+  //    1(B), 2(A), 3(C) ... or 1-B, 2-A ...
+  const marker = source.match(/(?:answer\s*key|answers?|उत्तर\s*कुंजी|उत्तर\s*तालिका)\s*:?/i);
+  if (marker) {
+    const region = source.slice(marker.index + marker[0].length);
+    const re = /(?:^|[\s,;|])(?:Q\s*)?(\d{1,3})\s*[.):\-]?\s*\(?([ABCD])\)?/gi;
+    let m;
+    while ((m = re.exec(region))) {
+      key[Number(m[1])] = 'ABCD'.indexOf(m[2].toUpperCase());
+    }
+  }
   return key;
 }
 
 function parseBulkQuestions(text) {
-  const normalized = String(text || '').replace(/\r/g, '').trim();
+  const normalized = String(text || '').replace(/\r/g, '').replace(/\u00a0/g, ' ').trim();
   if (!normalized) return [];
-
   const answerKey = parseAnswerKeyText(normalized);
-  const lines = normalized.split('\n').map(x => x.trim()).filter(Boolean);
-  const blocks = [];
-  let current = [];
-
-  // IMPORTANT: Do not depend on blank lines between questions. Questions pasted
-  // from PDF/OCR often have inconsistent spacing. A new numbered question starts
-  // a new block even when there is no empty line before it.
-  for (const line of lines) {
-    const qStart = line.match(/^(?:Q(?:uestion)?\s*)?(\d+)\s*[.)-]\s+(.+)$/i);
-    if (qStart) {
-      if (current.length) blocks.push(current);
-      current = [line];
-    } else if (current.length) {
-      current.push(line);
-    }
-  }
-  if (current.length) blocks.push(current);
-
+  const blocks = normalized.split(/\n\s*\n+/).map(x => x.trim()).filter(Boolean);
   const parsed = [];
+
   for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
-    const block = blocks[blockIndex];
-    if (!block.length) continue;
-    if (/^(answer\s*key|answers?|उत्तर\s*कुंजी)/i.test(block[0])) continue;
+    const lines = blocks[blockIndex].split('\n').map(x => x.trim()).filter(Boolean);
+    if (lines.length < 5) continue;
+    if (/^(?:answer\s*key|answers?|उत्तर\s*कुंजी|उत्तर\s*तालिका)/i.test(lines[0])) continue;
 
-    const numberMatch = block[0].match(/^\s*(?:Q(?:uestion)?\s*)?(\d+)\s*[.)-]\s+(.+)$/i);
-    const questionNumber = numberMatch ? Number(numberMatch[1]) : blockIndex + 1;
-    const questionParts = [];
+    const numberMatch = lines[0].match(/^\s*(?:Q(?:uestion)?\s*)?(\d+)\s*[.)-]\s*(.+)$/i);
+    if (!numberMatch) continue;
+    const questionNumber = Number(numberMatch[1]);
+    const question = numberMatch[2].trim();
+
     const options = [];
-    let seenOption = false;
-
-    for (const line of block) {
-      const qMatch = line.match(/^\s*(?:Q(?:uestion)?\s*)?(\d+)\s*[.)-]\s+(.+)$/i);
-      if (qMatch && questionParts.length === 0) {
-        questionParts.push(qMatch[2].trim());
+    let localAnswer = null;
+    for (const line of lines.slice(1)) {
+      const ans = line.match(/^(?:answer|ans|correct\s*answer|उत्तर|सही\s*उत्तर)\s*(?:key)?\s*[:=\-]\s*\(?\s*([ABCD])\s*\)?\s*$/i);
+      if (ans) {
+        localAnswer = 'ABCD'.indexOf(ans[1].toUpperCase());
         continue;
       }
-
-      const match = line.match(/^\s*(?:\[\s*([A-Da-d])\s*\]|([A-Da-d]))\s*[.)\-:]?\s+(.+)$/);
-      if (match) {
-        seenOption = true;
-        options.push({ letter: (match[1] || match[2]).toUpperCase(), text: match[3].trim() });
-      } else if (!seenOption) {
-        // Allow a question to wrap onto multiple lines before option A.
-        questionParts.push(line);
-      }
+      const match = line.match(/^(?:\[\s*([A-Da-d])\s*\]|([A-Da-d]))\s*[.)\-:]?\s*(.+)$/);
+      if (match) options.push({ letter: (match[1] || match[2]).toUpperCase(), text: match[3].trim() });
     }
-
-    const question = questionParts.join(' ').replace(/\s+/g, ' ').trim();
     if (options.length !== 4) continue;
     const unique = new Set(options.map(x => x.letter));
     if (unique.size !== 4 || !question || options.some(x => !x.text)) continue;
 
-    const sorted = options.sort((a, b) => 'ABCD'.indexOf(a.letter) - 'ABCD'.indexOf(b.letter));
-    parsed.push({
-      question,
-      options: sorted.map(x => x.text),
-      answer: Number.isInteger(answerKey[questionNumber]) ? answerKey[questionNumber] : 0
-    });
+    const sorted = options.sort((a,b) => 'ABCD'.indexOf(a.letter) - 'ABCD'.indexOf(b.letter));
+    const answer = Number.isInteger(localAnswer)
+      ? localAnswer
+      : (Number.isInteger(answerKey[questionNumber]) ? answerKey[questionNumber] : 0);
+    parsed.push({ question, options: sorted.map(x => x.text), answer });
   }
   return parsed;
 }

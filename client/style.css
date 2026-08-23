@@ -1525,3 +1525,10 @@ body.player-dark .classy-result h1 { color: #f8fafc; }
   .theme-toggle { width: 36px; height: 36px; }
   #accountStatus { display:none; }
 }
+
+/* Bilingual question presentation: English first, Hindi on its own line. */
+.question-language { display:block; line-height:1.55; }
+.question-hindi { margin-top:10px; padding-top:10px; border-top:1px solid rgba(148,163,184,.18); }
+.bilingual-entry { align-items:stretch; }
+.question-language + .question-language { margin-top:10px; }
+@media (max-width: 760px) { .bilingual-entry { grid-template-columns:1fr !important; } }

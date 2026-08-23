@@ -1,3 +1,12 @@
+# v20.3 fixed
+
+- PDF importer now keeps English and Hindi in separate question fields and renders English first, Hindi directly below.
+- Added OCR fallback for PDFs whose Hindi Unicode mapping is broken; Docker image includes Poppler + Tesseract Devanagari OCR.
+- Added `questionEnglish` and `questionHindi` fields while keeping legacy `question` compatibility.
+- Admin question editor supports separate English/Hindi editing.
+- Added one-active-device session enforcement for player and admin accounts: a new login replaces the previous device session.
+- Added server-side logout endpoints to invalidate the active session.
+
 # Changelog
 
 ## V16

@@ -69,6 +69,30 @@ function formatMathText(value) {
   return text;
 }
 
+function questionParts(q) {
+  const english = String(q?.questionEnglish || '').trim();
+  const hindi = String(q?.questionHindi || '').trim();
+  if (english || hindi) return { english, hindi };
+  const legacy = String(q?.question || '').trim();
+  const lines = legacy.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  return {
+    english: lines.find(x => !/[\u0900-\u097F]/.test(x)) || (lines.length ? lines[0] : ''),
+    hindi: lines.find(x => /[\u0900-\u097F]/.test(x)) || ''
+  };
+}
+
+function formatQuestionHTML(q) {
+  const parts = questionParts(q);
+  const blocks = [];
+  if (parts.english) blocks.push(`<div class=\"question-language question-english\">${formatMathText(parts.english)}</div>`);
+  if (parts.hindi) blocks.push(`<div class=\"question-language question-hindi\">${formatMathText(parts.hindi)}</div>`);
+  return blocks.join('') || formatMathText(q?.question || '');
+}
+
+function setFormattedQuestion(el, q) {
+  if (el) el.innerHTML = formatQuestionHTML(q);
+}
+
 function setFormattedText(el, value) {
   if (el) el.innerHTML = formatMathText(value);
 }
@@ -109,7 +133,14 @@ if (themeToggle) {
 async function api(path, options = {}) {
   const res = await fetch(`${API}${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...(playerToken ? { Authorization: `Bearer ${playerToken}` } : {}), ...(options.headers || {}) } });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || 'Request failed.');
+  if (!res.ok) {
+    if (res.status === 401 && data.code === 'SESSION_REPLACED') {
+      playerToken = ''; loggedPlayer = null;
+      localStorage.removeItem('groupQuizPlayerToken'); localStorage.removeItem('groupQuizPlayer');
+      updateAccountUI();
+    }
+    throw new Error(data.message || 'Request failed.');
+  }
   return data;
 }
 function playerMessage(msg, error = false) { $('playerMessage').textContent = msg; $('playerMessage').classList.toggle('error', error); }
@@ -143,7 +174,8 @@ function updateAccountUI() {
   }
 }
 
-function logoutPlayer() {
+async function logoutPlayer() {
+  try { if (playerToken) await api('/player/logout', { method: 'POST' }); } catch {}
   playerToken = '';
   loggedPlayer = null;
   localStorage.removeItem('groupQuizPlayerToken');
@@ -398,7 +430,7 @@ function loadQuestion() {
   const q = questions[currentQuestion];
   if (!q) return finishQuiz();
   selectedAnswer = answers[currentQuestion] >= 0 ? answers[currentQuestion] : null;
-  questionNumber.textContent = currentQuestion + 1; setFormattedText(questionText, q.question); optionsContainer.innerHTML = '';
+  questionNumber.textContent = currentQuestion + 1; setFormattedQuestion(questionText, q); optionsContainer.innerHTML = '';
   q.options.forEach((option, index) => {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'option'; button.innerHTML = `${String.fromCharCode(65 + index)}. ${formatMathText(option)}`;
     if (index === selectedAnswer) button.classList.add('selected');

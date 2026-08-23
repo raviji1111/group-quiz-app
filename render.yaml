@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: group-quiz-app
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health

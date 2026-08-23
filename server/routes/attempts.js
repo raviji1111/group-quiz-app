@@ -13,6 +13,11 @@ router.post('/start', optionalPlayer, async (req, res) => {
     const quizId = String(req.body.quizId || '');
     const quiz = await Quiz.findOne({ _id: quizId, isPublished: true });
     if (!quiz) return res.status(404).json({ message: 'Quiz not found.' });
+    if (quiz.liveStatus === 'live') {
+      const liveEnds = quiz.liveEndsAt ? new Date(quiz.liveEndsAt) : null;
+      if (!liveEnds || liveEnds <= new Date()) { quiz.liveStatus = 'ended'; await quiz.save(); return res.status(409).json({ message: 'This live quiz has ended.' }); }
+    }
+    if (quiz.liveStatus === 'ended' && req.body.live === true) return res.status(409).json({ message: 'This live quiz has ended.' });
 
     const playerId = req.player?.id || null;
     if (!playerId) return res.status(401).json({ code: 'AUTH_REQUIRED', message: 'Please register or login before attempting a quiz.' });
@@ -39,7 +44,7 @@ router.post('/start', optionalPlayer, async (req, res) => {
       const expiresAt = new Date(startAt.getTime() + quiz.time * 60 * 1000);
       const session = await QuizSession.create({ quiz: quiz._id, playerName, player: playerId, startedAt: startAt, expiresAt, joinedAt: now, answers: Array(quiz.questions.length).fill(-1) });
       const waiting = startAt > now;
-      return res.status(201).json({ sessionId: session._id, quizId: quiz._id, status: waiting ? 'waiting' : 'started', startedAt: startAt, expiresAt, time: quiz.time, maxViolations: quiz.maxViolations, currentQuestion: 0, answers: session.answers });
+      return res.status(201).json({ sessionId: session._id, quizId: quiz._id, status: waiting ? 'waiting' : 'started', startedAt: startAt, expiresAt, time: quiz.time, maxViolations: quiz.maxViolations, currentQuestion: 0, answers: session.answers, liveStatus: quiz.liveStatus });
     }
 
     const waiting = new Date(existing.startedAt) > now;

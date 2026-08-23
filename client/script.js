@@ -19,6 +19,7 @@ let submitting = false;
 let violationMonitoringReady = false;
 let monitoringTimer = null;
 let waitingTimer = null;
+let liveScoreInterval = null;
 const SESSION_STORAGE_KEY = 'groupQuizActiveSession';
 let playerToken = localStorage.getItem('groupQuizPlayerToken') || '';
 let loggedPlayer = JSON.parse(localStorage.getItem('groupQuizPlayer') || 'null');
@@ -88,8 +89,8 @@ async function api(path, options = {}) {
 function playerMessage(msg, error = false) { $('playerMessage').textContent = msg; $('playerMessage').classList.toggle('error', error); }
 
 function updateAccountUI() {
-  if (loggedPlayer) { accountStatus.textContent = `Logged in: ${loggedPlayer.name}`; accountBtn.textContent = 'Account'; playerNameInput.value = loggedPlayer.name; startBtn.disabled = false; }
-  else { accountStatus.textContent = 'Registration required'; accountBtn.textContent = 'Login / Register'; playerNameInput.value = ''; startBtn.disabled = true; }
+  if (loggedPlayer) { accountStatus.textContent = `Logged in: ${loggedPlayer.name}`; if($('accountStatusMirror'))$('accountStatusMirror').textContent=`Signed in as ${loggedPlayer.name}. You can start a quiz now.`; accountBtn.textContent = 'Account'; playerNameInput.value = loggedPlayer.name; startBtn.disabled = false; }
+  else { accountStatus.textContent = 'Registration required'; if($('accountStatusMirror'))$('accountStatusMirror').textContent='Please register or login to attempt quizzes.'; accountBtn.textContent = 'Login / Register'; playerNameInput.value = ''; startBtn.disabled = true; }
 }
 accountBtn.addEventListener('click', () => accountPanel.classList.toggle('hidden'));
 $('registerBtn').addEventListener('click', async () => {
@@ -101,16 +102,48 @@ $('loginAccountBtn').addEventListener('click', async () => {
 updateAccountUI();
 
 async function loadQuizList() {
-  if (!loggedPlayer || !playerToken) { quizSelect.innerHTML = '<option value="">Register / Login to view quizzes</option>'; startBtn.disabled = true; return; }
+  if (!loggedPlayer || !playerToken) {
+    quizSelect.innerHTML = '<option value="">Register / Login to view quizzes</option>';
+    startBtn.disabled = true;
+    renderSubjectGrid([]); renderQuizCards([]); renderLiveCards([]);
+    return;
+  }
   try {
     const { quizzes } = await api('/quizzes/public');
     quizSelect.innerHTML = '';
-    if (!quizzes.length) { quizSelect.innerHTML = '<option value="">No published quizzes</option>'; startBtn.disabled = true; return; }
-    quizzes.forEach(q => { const o = document.createElement('option'); o.value = q._id; o.textContent = `${q.title} — ${q.questions.length} questions · ${q.time} min`; quizSelect.appendChild(o); });
-    const requested = new URLSearchParams(location.search).get('quiz');
-    if (requested && quizzes.some(q => q._id === requested)) quizSelect.value = requested;
-  } catch (e) { quizSelect.innerHTML = '<option value="">Could not load quizzes</option>'; startBtn.disabled = true; playerMessage(e.message, true); }
+    if (!quizzes.length) { quizSelect.innerHTML = '<option value="">No published quizzes</option>'; startBtn.disabled = true; renderSubjectGrid([]); renderQuizCards([]); return; }
+    quizzes.forEach(q => { const o=document.createElement('option'); o.value=q._id; o.textContent=`${q.title} — ${q.questions.length} questions · ${q.time} min`; quizSelect.appendChild(o); });
+    const requested=new URLSearchParams(location.search).get('quiz'); if(requested && quizzes.some(q=>q._id===requested)) quizSelect.value=requested;
+    window.availableQuizzes=quizzes;
+    renderSubjectGrid(quizzes); renderQuizCards(quizzes); await loadLiveQuizzes();
+  } catch(e) { quizSelect.innerHTML='<option value="">Could not load quizzes</option>'; startBtn.disabled=true; playerMessage(e.message,true); }
 }
+
+function renderSubjectGrid(quizzes) {
+  const grid=$('subjectGrid'); if(!grid)return; grid.innerHTML='';
+  const map=new Map(); (quizzes||[]).forEach(q=>{const subject=q.subject||'General'; if(!map.has(subject))map.set(subject,[]); map.get(subject).push(q);});
+  if(!map.size){grid.innerHTML='<div class="empty-state">Login to explore quizzes.</div>';return;}
+  [...map.entries()].forEach(([subject,list])=>{
+    const card=document.createElement('button'); card.className='subject-card'; card.innerHTML=`<span class="subject-icon">${subjectIcon(subject)}</span><span><strong></strong><small>${list.length} quiz${list.length===1?'':'zes'}</small></span><b>→</b>`; card.querySelector('strong').textContent=subject; card.onclick=()=>renderQuizCards(list,subject); grid.appendChild(card);
+  });
+}
+function subjectIcon(s){const x=String(s).toLowerCase(); if(x.includes('math'))return '∑'; if(x.includes('reason'))return '⌁'; if(x.includes('gk')||x.includes('general'))return '◆'; if(x.includes('hindi'))return 'अ'; if(x.includes('science'))return '⚗'; return '✦';}
+function renderQuizCards(quizzes,title='All Quizzes') {
+  const grid=$('quizCards'), heading=$('catalogTitle'); if(!grid)return; grid.innerHTML=''; if(heading)heading.textContent=title;
+  (quizzes||[]).slice(0,60).forEach(q=>{const card=document.createElement('article');card.className='quiz-catalog-card';card.innerHTML=`<div class="catalog-top"><span class="subject-pill"></span><span>${q.time} min</span></div><h3></h3><p class="catalog-topic"></p><div class="catalog-bottom"><span>${q.questions.length} Questions</span><button>Start →</button></div>`;card.querySelector('.subject-pill').textContent=q.subject||'General';card.querySelector('h3').textContent=q.title;card.querySelector('.catalog-topic').textContent=q.topic||'General';card.querySelector('button').onclick=()=>{quizSelect.value=q._id;startQuiz();};grid.appendChild(card);});
+  if(!(quizzes||[]).length)grid.innerHTML='<div class="empty-state">No quizzes in this subject yet.</div>';
+}
+async function loadLiveQuizzes(){
+  const wrap=$('liveCards'); if(!wrap)return;
+  try{const data=await api('/live/active');renderLiveCards(data.quizzes||[]);}catch(e){renderLiveCards([]);}
+}
+function renderLiveCards(quizzes){const wrap=$('liveCards');if(!wrap)return;wrap.innerHTML='';if(!quizzes.length){wrap.innerHTML='<div class="live-empty">No live quiz right now. Check back soon.</div>';return;}quizzes.forEach(q=>{const card=document.createElement('article');card.className='live-player-card';card.innerHTML=`<div class="live-player-top"><span>🔴 LIVE NOW</span><strong></strong></div><p></p><h3></h3><div class="live-player-meta"><span>${q.questions.length} Questions</span><span>${q.time} Minutes</span></div><button>Join Live Quiz →</button>`;card.querySelector('strong').textContent=q.subject||'General';card.querySelector('p').textContent=q.topic||'General';card.querySelector('h3').textContent=q.title;card.querySelector('button').onclick=()=>{quizSelect.value=q._id;startQuiz();};wrap.appendChild(card);});}
+
+async function showLiveBoard(){
+  if(!quiz?.liveStatus || quiz.liveStatus!=='live') return;
+  try{const data=await api(`/live/${quiz._id}/board`);const el=$('liveScoreStrip');if(!el)return;if(data.quiz.showLiveScore && data.me){el.classList.remove('hidden');el.innerHTML=`Live score: <strong>${data.me.score}/${data.me.total}</strong> · Answered ${data.me.answered} · ${data.participants} participants`;} if(data.quiz.showLeaderboard){const box=$('resultLiveBoard');if(box)box.innerHTML='<h3>Live Leaderboard</h3>'+data.leaderboard.slice(0,10).map(r=>`<div><span>#${r.rank} ${escapeHtml(r.playerName)}</span><strong>${r.score}/${r.total}</strong></div>`).join('');}}catch(e){}
+}
+
 
 async function startQuiz() {
   if (!loggedPlayer || !playerToken) { accountPanel.classList.remove('hidden'); return playerMessage('Please register or login before attempting a quiz.', true); }
@@ -164,8 +197,8 @@ function beginActiveQuiz(session) {
   clearTimeout(monitoringTimer);
   timeLeft = Math.max(0, Math.ceil((new Date(session.expiresAt).getTime() - Date.now()) / 1000));
   if (timeLeft <= 0) return finishQuiz('auto-submitted');
-  totalQuestions.textContent = questions.length; resultTotal.textContent = questions.length; violationCount.textContent = violations; maxViolations.textContent = maxQuizViolations;
-  startScreen.classList.remove('active'); quizScreen.classList.add('active'); resultScreen.classList.remove('active'); loadQuestion(); startTimer();
+  totalQuestions.textContent = questions.length; resultTotal.textContent = questions.length; violationCount.textContent = violations; maxViolations.textContent = maxQuizViolations; if($('quizSubjectBadge'))$('quizSubjectBadge').textContent=quiz.subject||'General'; if($('quizTopicBadge'))$('quizTopicBadge').textContent=quiz.topic||'General';
+  startScreen.classList.remove('active'); quizScreen.classList.add('active'); resultScreen.classList.remove('active'); loadQuestion(); startTimer(); clearInterval(liveScoreInterval); if(quiz.liveStatus==='live') { showLiveBoard(); liveScoreInterval=setInterval(showLiveBoard,5000); }
   if (quiz.examMode) {
     requestFullscreen();
     monitoringTimer = setTimeout(() => { violationMonitoringReady = true; }, 2000);
@@ -223,14 +256,14 @@ function updateTimer() { timer.textContent = `${String(Math.floor(timeLeft / 60)
 
 async function finishQuiz(status = 'completed') {
   if (!quizStarted || !violationMonitoringReady || isFinishing || submitting) return;
-  isFinishing = true; quizStarted = false; violationMonitoringReady = false; clearTimeout(monitoringTimer); clearInterval(timerInterval); submitting = true;
+  isFinishing = true; quizStarted = false; violationMonitoringReady = false; clearTimeout(monitoringTimer); clearInterval(timerInterval); clearInterval(liveScoreInterval); submitting = true;
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   try {
     const result = await api('/attempts', { method: 'POST', body: JSON.stringify({ sessionId, answers, violations, violationReasons, status }) });
     scoreElement.textContent = result.score; resultTotal.textContent = result.total; resultPlayer.textContent = `Player: ${playerName}`;
     const percentage = result.percentage;
     resultMessage.textContent = percentage >= 80 ? 'Excellent performance!' : percentage >= 60 ? 'Good job!' : percentage >= 40 ? 'Keep practicing!' : 'Keep learning and try again!';
-    quizScreen.classList.remove('active'); resultScreen.classList.add('active');
+    quizScreen.classList.remove('active'); resultScreen.classList.add('active'); await showLiveBoard();
     localStorage.removeItem(SESSION_STORAGE_KEY);
   } catch (e) {
     alert(`Could not submit quiz: ${e.message}`);
@@ -238,7 +271,7 @@ async function finishQuiz(status = 'completed') {
   }
 }
 
-restartBtn.addEventListener('click', () => { clearTimeout(monitoringTimer); clearTimeout(waitingTimer); localStorage.removeItem(SESSION_STORAGE_KEY); violationMonitoringReady = false; resultScreen.classList.remove('active'); startScreen.classList.add('active'); playerNameInput.value = ''; timer.textContent = '00:00'; progressBar.style.width = '0%'; isFinishing = false; submitting = false; });
+restartBtn.addEventListener('click', () => { clearInterval(liveScoreInterval); clearTimeout(monitoringTimer); clearTimeout(waitingTimer); localStorage.removeItem(SESSION_STORAGE_KEY); violationMonitoringReady = false; resultScreen.classList.remove('active'); startScreen.classList.add('active'); playerNameInput.value = ''; timer.textContent = '00:00'; progressBar.style.width = '0%'; isFinishing = false; submitting = false; });
 
 async function requestFullscreen() { try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); } catch (e) {} }
 
@@ -259,5 +292,8 @@ warningOkBtn.addEventListener('click', () => { warningOpen = false; warningModal
 
 ['contextmenu','copy','cut','paste'].forEach(type => document.addEventListener(type, e => { if (quizStarted) e.preventDefault(); }));
 
+document.querySelectorAll('.player-nav-btn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.player-nav-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const view=btn.dataset.view;if(view==='live'){document.getElementById('livePreview')?.scrollIntoView({behavior:'smooth'});loadLiveQuizzes();}else if(view==='subjects'){document.getElementById('subjectGrid')?.scrollIntoView({behavior:'smooth'});}else{window.scrollTo({top:0,behavior:'smooth'});}}));
+$('refreshLiveBtn')?.addEventListener('click',loadLiveQuizzes);
+setInterval(()=>{if(!quizStarted)loadLiveQuizzes();},10000);
 loadQuizList();
 setTimeout(resumeStoredSession, 150);

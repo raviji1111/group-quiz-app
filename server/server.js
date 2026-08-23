@@ -8,6 +8,7 @@ const quizRoutes = require('./routes/quizzes');
 const attemptRoutes = require('./routes/attempts');
 const playerAuthRoutes = require('./routes/playerAuth');
 const playerRoutes = require('./routes/players');
+const liveRoutes = require('./routes/live');
 const { ensureAdmin } = require('./utils/seedAdmin');
 
 const app = express();
@@ -23,6 +24,7 @@ app.use('/api/quizzes', quizRoutes);
 app.use('/api/attempts', attemptRoutes);
 app.use('/api/player', playerAuthRoutes);
 app.use('/api/players', playerRoutes);
+app.use('/api/live', liveRoutes);
 
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, '..', 'client', 'admin.html')));
 app.get('*splat', (req, res) => res.sendFile(path.join(__dirname, '..', 'client', 'index.html')));

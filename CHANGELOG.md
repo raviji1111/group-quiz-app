@@ -57,3 +57,14 @@ Browser anti-cheat controls cannot guarantee prevention of all cheating. They sh
 - Kept support for older `\\frac{1}{3}` records.
 - Applied the same fraction renderer to player questions/options and admin previews/question lists.
 - Fixed admin question headings so mixed fractions render there too.
+
+## V17 — Classy quiz hub + subject/topic + live quiz control
+- Added manual Subject and Topic fields to every quiz.
+- Added subject/topic grouping on the student quiz hub.
+- Added a polished student-facing quiz catalog and live quiz area.
+- Added live quiz start/end controls with configurable live duration.
+- Added live score visibility and leaderboard visibility settings.
+- Added admin live monitoring with participants, active sessions, submitted count and live ranking.
+- Added student live score polling while a live quiz is in progress.
+- Added live leaderboard on the result screen when enabled.
+- Preserved existing PDF import, auto answer-key matching, inline question editing and mixed-fraction rendering.

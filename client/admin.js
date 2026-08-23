@@ -106,10 +106,15 @@ function resetEditor() {
   $('editorTitle').textContent = 'Create Quiz';
   $('quizId').value = '';
   $('quizTitle').value = '';
+  $('quizSubject').value = '';
+  $('quizTopic').value = '';
   $('quizTime').value = 10;
   $('joinStartAt').value = '';
   $('joinEndAt').value = '';
   $('scheduledStartAt').value = '';
+  $('liveDuration').value = 30;
+  $('showLiveScore').value = 'on';
+  $('showLeaderboard').value = 'on';
   $('maxViolations').value = 3;
   $('examMode').value = 'on';
   questions = [];
@@ -147,7 +152,7 @@ $('clearQuestionsBtn').addEventListener('click', () => { if (questions.length &&
 
 function quizPayload() {
   const toISO = id => { const v = $(id).value; return v ? new Date(v).toISOString() : null; };
-  return { title: $('quizTitle').value.trim(), time: Number($('quizTime').value), maxViolations: Number($('maxViolations').value), examMode: $('examMode').value === 'on', joinStartAt: toISO('joinStartAt'), joinEndAt: toISO('joinEndAt'), scheduledStartAt: toISO('scheduledStartAt'), questions };
+  return { title: $('quizTitle').value.trim(), subject: $('quizSubject').value.trim() || 'General', topic: $('quizTopic').value.trim() || 'General', time: Number($('quizTime').value), maxViolations: Number($('maxViolations').value), examMode: $('examMode').value === 'on', joinStartAt: toISO('joinStartAt'), joinEndAt: toISO('joinEndAt'), scheduledStartAt: toISO('scheduledStartAt'), liveDuration: Number($('liveDuration').value || 30), showLiveScore: $('showLiveScore').value === 'on', showLeaderboard: $('showLeaderboard').value === 'on', questions };
 }
 
 $('saveQuizBtn').addEventListener('click', async () => {
@@ -181,7 +186,7 @@ async function loadQuizzes() {
     const card = document.createElement('div'); card.className = 'quiz-admin-item';
     const scheduleText = q.scheduledStartAt ? ` · Starts ${new Date(q.scheduledStartAt).toLocaleString()}` : '';
     const joinText = q.joinStartAt && q.joinEndAt ? ` · Join ${new Date(q.joinStartAt).toLocaleString()}–${new Date(q.joinEndAt).toLocaleString()}` : '';
-    card.innerHTML = `<div><strong></strong><small>${q.questions.length} questions · ${q.time} min · ${q.isPublished ? 'Published' : 'Draft'}${scheduleText}${joinText}</small></div><div class="item-actions"></div>`;
+    card.innerHTML = `<div><strong></strong><small><span class="subject-pill">${escapeHtml(q.subject || 'General')}</span> · ${escapeHtml(q.topic || 'General')} · ${q.questions.length} questions · ${q.time} min · ${q.isPublished ? 'Published' : 'Draft'}${scheduleText}${joinText}</small></div><div class="item-actions"></div>`;
     card.querySelector('strong').textContent = q.title;
     const actions = card.querySelector('.item-actions');
     const edit = document.createElement('button'); edit.className = 'small-btn'; edit.textContent = 'Edit'; edit.onclick = () => editQuiz(q._id);
@@ -198,10 +203,15 @@ async function editQuiz(id) {
     $('editorTitle').textContent = 'Edit Quiz';
     $('quizId').value = quiz._id;
     $('quizTitle').value = quiz.title;
+  $('quizSubject').value = quiz.subject || 'General';
+  $('quizTopic').value = quiz.topic || 'General';
     $('quizTime').value = quiz.time;
   $('joinStartAt').value = quiz.joinStartAt ? new Date(quiz.joinStartAt).toISOString().slice(0,16) : '';
   $('joinEndAt').value = quiz.joinEndAt ? new Date(quiz.joinEndAt).toISOString().slice(0,16) : '';
   $('scheduledStartAt').value = quiz.scheduledStartAt ? new Date(quiz.scheduledStartAt).toISOString().slice(0,16) : '';
+  $('liveDuration').value = quiz.liveDuration || 30;
+  $('showLiveScore').value = quiz.showLiveScore === false ? 'off' : 'on';
+  $('showLeaderboard').value = quiz.showLeaderboard === false ? 'off' : 'on';
     $('maxViolations').value = quiz.maxViolations;
     $('examMode').value = quiz.examMode ? 'on' : 'off';
     questions = quiz.questions.map(q => ({ question: q.question, options: [...q.options], answer: q.answer }));
@@ -299,6 +309,7 @@ const sectionMeta = {
   dashboardSection: ['Dashboard','Overview of your quiz platform.'],
   quizSection: ['Manage Quizzes','Create, edit, publish or remove quizzes.'],
   createSection: ['Create Quiz','Build your quiz and manage its questions.'],
+  liveSection: ['Live Quiz','Start and monitor live tests in real time.'],
   resultsSection: ['Results & Attempts','Completed quizzes and every student attempt.'],
   leaderboardSection: ['Leaderboard','Top performers by quiz or across the platform.'],
   usersSection: ['Users','Manage registered students and accounts.']
@@ -705,3 +716,59 @@ loadAll = async function() {
   await loadUsers();
   await loadLegacyUsers();
 };
+
+/* ===== V17 LIVE CONTROL ===== */
+let liveBoardQuizId = '';
+let liveBoardTimer = null;
+
+async function loadLiveQuizCards() {
+  const wrap = $('liveQuizCards'); if (!wrap) return;
+  try {
+    const data = await api('/quizzes');
+    wrap.innerHTML = '';
+    const list = data.quizzes || [];
+    if (!list.length) { wrap.innerHTML = '<div class="empty-state">Create a quiz first.</div>'; return; }
+    list.forEach(q => {
+      const card = document.createElement('article'); card.className = 'live-admin-card';
+      const live = q.liveStatus === 'live';
+      card.innerHTML = `<div class="live-card-top"><span class="subject-pill">${escapeHtml(q.subject || 'General')}</span><span class="live-status ${live?'is-live':''}">${live?'● LIVE':'○ READY'}</span></div><h3></h3><p>${escapeHtml(q.topic || 'General')} · ${q.questions?.length || 0} questions · ${q.time} min</p><div class="live-card-actions"></div>`;
+      card.querySelector('h3').textContent = q.title;
+      const actions = card.querySelector('.live-card-actions');
+      if (live) {
+        const monitor = document.createElement('button'); monitor.className='small-btn'; monitor.textContent='📊 Monitor'; monitor.onclick=()=>{liveBoardQuizId=q._id; openAdminSection('liveSection'); loadLiveBoard(q._id);};
+        const end = document.createElement('button'); end.className='small-btn delete-btn'; end.textContent='■ End Live'; end.onclick=async()=>{if(confirm(`End live quiz “${q.title}”?`)){await api(`/live/${q._id}/end`,{method:'POST'}); await loadLiveQuizCards(); loadLiveBoard(q._id);}};
+        actions.append(monitor,end);
+      } else {
+        const start = document.createElement('button'); start.className='small-btn live-start-btn'; start.textContent='🚀 Start Live'; start.onclick=async()=>{
+          const duration=Number(prompt(`Live duration in minutes for “${q.title}”`, q.liveDuration || q.time || 30));
+          if(!Number.isInteger(duration)||duration<1||duration>180)return;
+          try { await api(`/live/${q._id}/start`,{method:'POST',body:JSON.stringify({duration,showLiveScore:q.showLiveScore!==false,showLeaderboard:q.showLeaderboard!==false})}); liveBoardQuizId=q._id; await loadLiveQuizCards(); await loadLiveBoard(q._id); }
+          catch(e){showMessage(e.message,true);}
+        };
+        actions.append(start);
+      }
+      const monitorBtn=document.createElement('button'); monitorBtn.className='small-btn secondary-btn'; monitorBtn.textContent='Open'; monitorBtn.onclick=()=>{liveBoardQuizId=q._id;loadLiveBoard(q._id);}; actions.append(monitorBtn);
+      wrap.appendChild(card);
+    });
+  } catch(e) { wrap.innerHTML='<div class="empty-state">Could not load live quizzes.</div>'; }
+}
+
+async function loadLiveBoard(id = liveBoardQuizId) {
+  if (!id || !$('liveBoardBody')) return;
+  liveBoardQuizId=id;
+  try {
+    const data=await api(`/live/${id}/admin-board`);
+    $('liveBoardTitle').textContent=data.quiz.title;
+    $('liveBoardMeta').textContent=`${data.quiz.subject || 'General'} · ${data.quiz.topic || 'General'} · ${data.quiz.liveStatus === 'live' ? 'LIVE NOW' : 'Not live'}`;
+    $('liveParticipants').textContent=data.participants;
+    $('liveActive').textContent=data.active;
+    $('liveSubmitted').textContent=data.submitted;
+    const body=$('liveBoardBody'); body.innerHTML='';
+    if(!data.leaderboard.length){body.innerHTML='<tr><td colspan="5">No participants yet.</td></tr>';return;}
+    data.leaderboard.forEach(r=>{const tr=document.createElement('tr'); [r.rank,r.playerName,`${r.score}/${r.total}`,r.answered,r.submitted?'Submitted':'Live'].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td);});body.appendChild(tr);});
+  } catch(e) { showMessage(e.message,true); }
+}
+
+$('refreshLiveBoardBtn')?.addEventListener('click',()=>loadLiveBoard());
+document.querySelector('.nav-item[data-section="liveSection"]')?.addEventListener('click',()=>{loadLiveQuizCards(); if(liveBoardQuizId)loadLiveBoard(liveBoardQuizId);});
+setInterval(()=>{if(document.getElementById('liveSection')?.classList.contains('active-section')){loadLiveQuizCards();if(liveBoardQuizId)loadLiveBoard(liveBoardQuizId);}},5000);

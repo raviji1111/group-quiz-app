@@ -130,7 +130,10 @@ router.post('/import-pdf', requireAdmin, upload.single('pdf'), async (req, res) 
 
 function normalizeQuiz(body, adminId) {
   const title = String(body.title || '').trim();
+  const subject = String(body.subject || 'General').trim().slice(0, 80) || 'General';
+  const topic = String(body.topic || 'General').trim().slice(0, 120) || 'General';
   const time = Number(body.time);
+  const liveDuration = Number(body.liveDuration || 30);
   const maxViolations = Number(body.maxViolations);
   const examMode = Boolean(body.examMode);
   const parseDate = (value) => value ? new Date(value) : null;
@@ -147,6 +150,7 @@ function normalizeQuiz(body, adminId) {
 
   if (!title) throw new Error('Quiz title is required.');
   if (!Number.isInteger(time) || time < 1 || time > 180) throw new Error('Time must be 1-180 minutes.');
+  if (!Number.isInteger(liveDuration) || liveDuration < 1 || liveDuration > 180) throw new Error('Live duration must be 1-180 minutes.');
   if (!Number.isInteger(maxViolations) || maxViolations < 1 || maxViolations > 20) throw new Error('Violations must be 1-20.');
   if (!questions.length) throw new Error('At least one question is required.');
 
@@ -160,12 +164,12 @@ function normalizeQuiz(body, adminId) {
     return { question, options, answer };
   });
 
-  return { title, time, maxViolations, examMode, questions: cleaned, createdBy: adminId, isPublished: true, joinStartAt, joinEndAt, scheduledStartAt };
+  return { title, subject, topic, time, liveDuration, maxViolations, examMode, questions: cleaned, createdBy: adminId, isPublished: true, joinStartAt, joinEndAt, scheduledStartAt, showLiveScore: body.showLiveScore !== false, showLeaderboard: body.showLeaderboard !== false };
 }
 
 router.get('/public', requirePlayer, async (req, res) => {
   try {
-    const quizzes = await Quiz.find({ isPublished: true }).sort({ createdAt: -1 }).select('_id title time maxViolations examMode joinStartAt joinEndAt scheduledStartAt questions.question questions.options');
+    const quizzes = await Quiz.find({ isPublished: true }).sort({ createdAt: -1 }).select('_id title subject topic time maxViolations examMode joinStartAt joinEndAt scheduledStartAt liveStatus liveStartedAt liveEndsAt showLiveScore showLeaderboard questions.question questions.options');
     res.json({ quizzes });
   } catch (error) {
     console.error(error);
@@ -195,7 +199,7 @@ router.get('/:id/admin', requireAdmin, async (req, res) => {
 
 router.get('/:id/public', requirePlayer, async (req, res) => {
   try {
-    const quiz = await Quiz.findOne({ _id: req.params.id, isPublished: true }).select('_id title time maxViolations examMode joinStartAt joinEndAt scheduledStartAt questions.question questions.options');
+    const quiz = await Quiz.findOne({ _id: req.params.id, isPublished: true }).select('_id title subject topic time maxViolations examMode joinStartAt joinEndAt scheduledStartAt liveStatus liveStartedAt liveEndsAt showLiveScore showLeaderboard questions.question questions.options');
     if (!quiz) return res.status(404).json({ message: 'Quiz not found.' });
     res.json({ quiz });
   } catch {

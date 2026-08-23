@@ -1,54 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Group Quiz</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Group Quiz — Quiz Hub</title><link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <section id="startScreen" class="screen active">
-    <div class="card">
-      <h1>Group Quiz</h1>
-      <p class="subtitle">Choose a quiz and test your knowledge.</p>
-      <select id="quizSelect" class="player-select"><option value="">Loading quizzes...</option></select>
-      <div class="account-bar"><span id="accountStatus">Not logged in</span><button id="accountBtn" class="small-btn secondary-btn">Login / Register</button></div>
-      <input id="playerName" type="text" placeholder="Your registered name" maxlength="30" autocomplete="off" readonly>
-      <button id="startBtn">Start Quiz</button>
-      <p id="playerMessage" class="admin-message"></p>
-      <div id="accountPanel" class="account-panel hidden">
-        <input id="accountName" type="text" placeholder="Name (for registration)" maxlength="30">
-        <input id="accountEmail" type="email" placeholder="Email">
-        <input id="accountPassword" type="password" placeholder="Password (6+ characters)">
-        <div class="account-actions"><button id="registerBtn">Register</button><button id="loginAccountBtn" class="secondary-btn">Login</button></div>
-        <p id="accountMessage" class="admin-message"></p>
-      </div>
-    </div>
-  </section>
+<body class="player-site">
+<header class="player-nav">
+  <div class="player-brand"><div class="brand-mark">GQ</div><div><strong>Group Quiz</strong><small>Test. Learn. Improve.</small></div></div>
+  <nav><button class="player-nav-btn active" data-view="home">Home</button><button class="player-nav-btn" data-view="subjects">Subjects</button><button class="player-nav-btn" data-view="live">🔴 Live Quiz</button></nav>
+  <div class="player-account"><span id="accountStatus">Registration required</span><button id="accountBtn" class="small-btn secondary-btn">Login / Register</button></div>
+</header>
 
-  <section id="quizScreen" class="screen">
-    <div class="quiz-container">
-      <div class="quiz-top"><div>Question <span id="questionNumber">1</span> / <span id="totalQuestions">0</span></div><div id="timer">00:00</div></div>
-      <div class="progress-container"><div id="progressBar"></div></div>
-      <div class="question-box"><h2 id="questionText">Question</h2></div>
-      <div id="optionsContainer" class="options"></div>
-      <button id="nextBtn" class="next-btn" disabled>Next</button>
-      <div id="violationBox" class="violation-box">Warnings: <span id="violationCount">0</span> / <span id="maxViolations">3</span></div>
-    </div>
-  </section>
+<main class="player-main">
+<section id="startScreen" class="screen active">
+  <div class="player-hero"><div><span class="hero-kicker">QUIZ HUB</span><h1>Challenge yourself.<br><em>One question at a time.</em></h1><p>Choose a subject, pick a topic and start a focused practice test.</p></div><div class="hero-badge">✦<span>Classy<br>Quiz Experience</span></div></div>
+  <section class="subject-section"><div class="player-section-head"><div><span class="card-eyebrow">EXPLORE</span><h2>Subjects</h2></div><p>Browse topic-wise quizzes</p></div><div id="subjectGrid" class="subject-grid"></div></section>
+  <section id="quizCatalog" class="catalog-section"><div class="player-section-head"><div><span class="card-eyebrow">QUIZZES</span><h2 id="catalogTitle">All Quizzes</h2></div><select id="quizSelect" class="player-select"><option value="">Loading quizzes...</option></select></div><div id="quizCards" class="quiz-card-grid"></div></section>
+  <section id="livePreview" class="live-preview-section"><div class="player-section-head"><div><span class="card-eyebrow live-eyebrow">LIVE NOW</span><h2>Live Quiz</h2></div><button id="refreshLiveBtn" class="secondary-btn">↻ Refresh</button></div><div id="liveCards" class="live-card-grid"></div></section>
+  <div class="account-bar"><span id="accountStatusMirror">Please register or login to attempt quizzes.</span><button id="startBtn">Start Selected Quiz</button></div>
+  <input id="playerName" type="text" maxlength="30" readonly class="hidden-input">
+  <p id="playerMessage" class="admin-message"></p>
+  <div id="accountPanel" class="account-panel hidden"><div class="account-panel-head"><div><span class="card-eyebrow">YOUR ACCOUNT</span><h3>Welcome to Group Quiz</h3></div></div><input id="accountName" type="text" placeholder="Full name" maxlength="30"><input id="accountEmail" type="email" placeholder="Email"><input id="accountPassword" type="password" placeholder="Password (6+ characters)"><div class="account-actions"><button id="registerBtn">Create Account</button><button id="loginAccountBtn" class="secondary-btn">Login</button></div><p id="accountMessage" class="admin-message"></p></div>
+</section>
 
-  <section id="resultScreen" class="screen">
-    <div class="card result-card">
-      <h1>Quiz Completed</h1>
-      <p id="resultPlayer">Player</p>
-      <div class="score"><span id="score">0</span> / <span id="resultTotal">0</span></div>
-      <p id="resultMessage">Good job!</p>
-      <button id="restartBtn">Try Again</button>
-    </div>
-  </section>
+<section id="quizScreen" class="screen"><div class="quiz-container classy-quiz"><div class="quiz-top"><div><span class="quiz-kicker">QUIZ IN PROGRESS</span><div>Question <span id="questionNumber">1</span> / <span id="totalQuestions">0</span></div></div><div id="timer">00:00</div></div><div class="progress-container"><div id="progressBar"></div></div><div class="question-box"><div class="question-meta"><span id="quizSubjectBadge"></span><span id="quizTopicBadge"></span></div><h2 id="questionText">Question</h2></div><div id="optionsContainer" class="options"></div><button id="nextBtn" class="next-btn" disabled>Next</button><div id="violationBox" class="violation-box">Warnings: <span id="violationCount">0</span> / <span id="maxViolations">3</span></div><div id="liveScoreStrip" class="live-score-strip hidden"></div></div></section>
 
-  <div id="warningModal" class="modal"><div class="modal-box"><h2>⚠️ Warning</h2><p id="warningMessage">Please stay in the quiz window.</p><button id="warningOkBtn">Continue Quiz</button></div></div>
-  <audio id="warningSound" preload="auto"><source src="warning.mp3" type="audio/mpeg"></audio>
+<section id="resultScreen" class="screen"><div class="card result-card classy-result"><span class="card-eyebrow">RESULT</span><h1>Quiz Completed</h1><p id="resultPlayer">Player</p><div class="score"><span id="score">0</span> / <span id="resultTotal">0</span></div><p id="resultMessage">Good job!</p><div id="resultLiveBoard" class="result-live-board"></div><button id="restartBtn">Back to Quiz Hub</button></div></section>
+</main>
+
+<div id="warningModal" class="modal"><div class="modal-box"><h2>⚠️ Warning</h2><p id="warningMessage">Please stay in the quiz window.</p><button id="warningOkBtn">Continue Quiz</button></div></div>
+<audio id="warningSound" preload="auto"><source src="warning.mp3" type="audio/mpeg"></audio>
 <script src="script.js"></script>
-</body>
-</html>
+</body></html>

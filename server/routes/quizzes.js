@@ -229,20 +229,12 @@ function normalizeQuiz(body, adminId) {
   return { title, subject, topic, time, liveDuration, maxViolations, examMode, questions: cleaned, createdBy: adminId, isPublished: true, joinStartAt, joinEndAt, scheduledStartAt, showLiveScore: body.showLiveScore !== false, showLeaderboard: body.showLeaderboard !== false };
 }
 
-// Public catalog: listing published quizzes must never depend on a player's
-// JWT. A stale/expired browser token should not make the published catalog
-// stay empty or return 401. Starting/attempting a quiz is still protected by
-// requirePlayer on the quiz detail and attempts routes.
-router.get('/public', async (req, res) => {
+router.get('/public', requirePlayer, async (req, res) => {
   try {
-    const quizzes = await Quiz.find({ isPublished: true })
-      .sort({ createdAt: -1 })
-      .select('_id title subject topic time maxViolations examMode joinStartAt joinEndAt scheduledStartAt liveStatus liveStartedAt liveEndsAt showLiveScore showLeaderboard questions.question questions.options')
-      .lean();
-    res.set('Cache-Control', 'no-store');
+    const quizzes = await Quiz.find({ isPublished: true }).sort({ createdAt: -1 }).select('_id title subject topic time maxViolations examMode joinStartAt joinEndAt scheduledStartAt liveStatus liveStartedAt liveEndsAt showLiveScore showLeaderboard questions.question questions.options');
     res.json({ quizzes });
   } catch (error) {
-    console.error('Public quiz list failed:', error);
+    console.error(error);
     res.status(500).json({ message: 'Could not load quizzes.' });
   }
 });

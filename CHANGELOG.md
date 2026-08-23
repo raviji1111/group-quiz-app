@@ -100,3 +100,12 @@ Browser anti-cheat controls cannot guarantee prevention of all cheating. They sh
 - If a PDF extractor places English + Hindi on the same physical line, the importer splits them at the first Devanagari character.
 - Player and admin question previews preserve the imported line break instead of collapsing both languages into one sentence.
 - Existing A/B/C/D parsing, question selection and answer-key matching remain unchanged.
+
+## v21 — compact responsive player + live leaderboard
+- Reduced quiz question/option typography for a more compact desktop and mobile attempt screen.
+- Added a dedicated user-side Live Leaderboard section with rank, score, attempted questions and elapsed time.
+- Added leaderboard access directly from each active live-quiz card.
+- Added responsive navigation that remains accessible on phones instead of disappearing completely.
+- Kept the player dark/light theme across the new leaderboard UI.
+- Added live leaderboard polling during live attempts.
+- Normal uploaded/practice quizzes are no longer limited to one completed attempt; live quizzes remain one-attempt-per-player.

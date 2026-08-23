@@ -313,7 +313,8 @@ function renderQuizCards(quizzes, title = 'All Quizzes') {
       card.querySelector('.subject-pill').textContent = q.subject || 'General';
       card.querySelector('h3').textContent = q.title;
       card.querySelector('.catalog-topic').textContent = `Topic: ${q.topic || 'General'}`;
-      card.querySelector('button').onclick = () => { quizSelect.value = q._id; startQuiz(); };
+      card.querySelector('.live-join-btn').onclick = () => { quizSelect.value = q._id; startQuiz(); };
+    card.querySelector('.live-board-btn').onclick = () => { showLiveBoard(q._id); document.getElementById('liveLeaderboard')?.scrollIntoView({behavior:'smooth',block:'start'}); };
       grid.appendChild(card);
     });
     if (!items.length) grid.innerHTML = '<div class="empty-state">No quizzes in this topic yet.</div>';
@@ -331,6 +332,44 @@ function renderQuizCards(quizzes, title = 'All Quizzes') {
   draw(list);
 }
 
+function formatElapsed(seconds) {
+  const total = Math.max(0, Number(seconds) || 0);
+  const m = Math.floor(total / 60), sec = total % 60;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+async function showLiveBoard(quizId = quiz?._id) {
+  if (!quizId || !loggedPlayer || !playerToken) return;
+  try {
+    const data = await api(`/live/${encodeURIComponent(quizId)}/board`);
+    const strip = $('liveScoreStrip');
+    if (strip && data.me) {
+      strip.classList.remove('hidden');
+      strip.innerHTML = `<strong>Your live score:</strong> ${data.me.score}/${data.me.total} · ${data.me.answered}/${data.me.total} answered · ${formatElapsed(data.me.elapsedSeconds)} elapsed`;
+    }
+    renderLeaderboard(data);
+  } catch (e) {
+    if ($('liveScoreStrip')) $('liveScoreStrip').classList.add('hidden');
+  }
+}
+
+function renderLeaderboard(data) {
+  const section = $('liveLeaderboard');
+  const table = $('leaderboardTable');
+  if (!section || !table) return;
+  section.classList.remove('hidden');
+  if ($('leaderboardQuizName')) $('leaderboardQuizName').textContent = data.quiz?.title || 'Live Quiz';
+  const me = data.me;
+  const meBox = $('leaderboardMe');
+  if (meBox && me) {
+    meBox.classList.remove('hidden');
+    meBox.innerHTML = `<span>Your Rank <strong>#${me.rank || '—'}</strong></span><span>Score <strong>${me.score}/${me.total}</strong></span><span>Questions <strong>${me.answered}/${me.total}</strong></span><span>Time <strong>${formatElapsed(me.elapsedSeconds)}</strong></span>`;
+  }
+  const rows = Array.isArray(data.leaderboard) ? data.leaderboard : [];
+  if (!rows.length) { table.innerHTML = '<div class="live-empty">No participants yet.</div>'; return; }
+  table.innerHTML = `<div class="leaderboard-head"><span>Rank</span><span>Player</span><span>Score</span><span>Questions</span><span>Time</span></div>` + rows.map(r => `<div class="leaderboard-row${r.playerId && loggedPlayer && String(r.playerId)===String(loggedPlayer._id || loggedPlayer.id) ? ' is-me' : ''}"><span class="rank">${r.rank <= 3 ? ['🥇','🥈','🥉'][r.rank-1] : '#'+r.rank}</span><strong>${escapeHtml(r.playerName)}</strong><span>${r.score}/${r.total}</span><span>${r.answered}/${r.total}</span><span>${formatElapsed(r.elapsedSeconds)}</span></div>`).join('');
+}
+
 async function loadLiveQuizzes() {
   const wrap = $('liveCards'); if (!wrap || !loggedPlayer || !playerToken) return;
   try { const data = await api('/live/active'); renderLiveCards(data.quizzes || []); } catch (e) { renderLiveCards([]); }
@@ -341,9 +380,10 @@ function renderLiveCards(quizzes) {
   if (!quizzes.length) { wrap.innerHTML = '<div class="live-empty">No live quiz right now. Check back soon.</div>'; return; }
   quizzes.forEach(q => {
     const card = document.createElement('article'); card.className = 'live-player-card';
-    card.innerHTML = `<div class="live-player-top"><span>🔴 LIVE NOW</span><strong></strong></div><p></p><h3></h3><div class="live-player-meta"><span>${q.questions.length} Questions</span><span>${q.time} Minutes</span></div><button>Join Live Quiz →</button>`;
+    card.innerHTML = `<div class="live-player-top"><span>🔴 LIVE NOW</span><strong></strong></div><p></p><h3></h3><div class="live-player-meta"><span>${q.questions.length} Questions</span><span>${q.time} Minutes</span></div><div class="live-card-actions"><button class="live-join-btn">Join Live Quiz →</button><button class="live-board-btn secondary-btn">🏆 Leaderboard</button></div>`;
     card.querySelector('strong').textContent = q.subject || 'General'; card.querySelector('p').textContent = `Topic: ${q.topic || 'General'}`; card.querySelector('h3').textContent = q.title;
-    card.querySelector('button').onclick = () => { quizSelect.value = q._id; startQuiz(); };
+    card.querySelector('.live-join-btn').onclick = () => { quizSelect.value = q._id; startQuiz(); };
+    card.querySelector('.live-board-btn').onclick = () => { showLiveBoard(q._id); document.getElementById('liveLeaderboard')?.scrollIntoView({behavior:'smooth',block:'start'}); };
     wrap.appendChild(card);
   });
 }
@@ -495,8 +535,9 @@ warningOkBtn.addEventListener('click', () => { warningOpen = false; warningModal
 
 ['contextmenu','copy','cut','paste'].forEach(type => document.addEventListener(type, e => { if (quizStarted) e.preventDefault(); }));
 
-document.querySelectorAll('.player-nav-btn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.player-nav-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const view=btn.dataset.view;if(!loggedPlayer||!playerToken){document.getElementById('authGate')?.scrollIntoView({behavior:'smooth',block:'center'});if($('accountMessage'))$('accountMessage').textContent='Please register or login first to open the quiz section.';return;}if(view==='live'){document.getElementById('livePreview')?.scrollIntoView({behavior:'smooth'});loadLiveQuizzes();}else if(view==='subjects'){document.getElementById('subjectGrid')?.scrollIntoView({behavior:'smooth'});}else{document.getElementById('quizHubContent')?.scrollIntoView({top:0,behavior:'smooth'});}}));
+document.querySelectorAll('.player-nav-btn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.player-nav-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const view=btn.dataset.view;if(!loggedPlayer||!playerToken){document.getElementById('authGate')?.scrollIntoView({behavior:'smooth',block:'center'});if($('accountMessage'))$('accountMessage').textContent='Please register or login first to open the quiz section.';return;}if(view==='live'){document.getElementById('livePreview')?.scrollIntoView({behavior:'smooth'});loadLiveQuizzes();}else if(view==='leaderboard'){document.getElementById('liveLeaderboard')?.scrollIntoView({behavior:'smooth',block:'start'}); if(quiz?.liveStatus==='live') showLiveBoard(quiz._id); else loadLiveQuizzes().then(()=>{ if(quiz?.liveStatus==='live') showLiveBoard(quiz._id); });}else if(view==='subjects'){document.getElementById('subjectGrid')?.scrollIntoView({behavior:'smooth'});}else{document.getElementById('quizHubContent')?.scrollIntoView({top:0,behavior:'smooth'});}}));
 $('refreshLiveBtn')?.addEventListener('click',loadLiveQuizzes);
+$('refreshLeaderboardBtn')?.addEventListener('click',()=>showLiveBoard(quiz?._id));
 setInterval(()=>{if(!quizStarted)loadLiveQuizzes();},10000);
 loadQuizList();
 setTimeout(resumeStoredSession, 150);

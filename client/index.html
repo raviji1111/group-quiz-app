@@ -7,7 +7,7 @@
 <body class="player-site">
 <header class="player-nav">
   <div class="player-brand"><div class="brand-mark">GQ</div><div><strong>Group Quiz</strong><small>Test. Learn. Improve.</small></div></div>
-  <nav><button class="player-nav-btn active" data-view="home">Home</button><button class="player-nav-btn" data-view="subjects">Subjects</button><button class="player-nav-btn" data-view="live">🔴 Live Quiz</button></nav>
+  <nav><button class="player-nav-btn active" data-view="home">Home</button><button class="player-nav-btn" data-view="subjects">Subjects</button><button class="player-nav-btn" data-view="live">🔴 Live Quiz</button><button class="player-nav-btn" data-view="leaderboard">🏆 Leaderboard</button></nav>
   <div class="player-account"><span id="accountStatus">Registration required</span><button id="themeToggle" class="theme-toggle" type="button" aria-label="Switch to dark mode">🌙</button><button id="accountBtn" class="small-btn secondary-btn">Login / Register</button></div>
 </header>
 
@@ -32,6 +32,7 @@
     <section class="subject-section"><div class="player-section-head"><div><span class="card-eyebrow">EXPLORE</span><h2>Subjects</h2></div><p>Choose a subject to see its topics</p></div><div id="subjectGrid" class="subject-grid"></div></section>
     <section id="quizCatalog" class="catalog-section"><div class="player-section-head"><div><span class="card-eyebrow">QUIZZES</span><h2 id="catalogTitle">All Quizzes</h2></div><select id="quizSelect" class="player-select"><option value="">Loading quizzes...</option></select></div><div id="topicFilter" class="topic-filter"></div><div id="quizCards" class="quiz-card-grid"></div></section>
     <section id="livePreview" class="live-preview-section"><div class="player-section-head"><div><span class="card-eyebrow live-eyebrow">LIVE NOW</span><h2>Live Quiz</h2></div><button id="refreshLiveBtn" class="secondary-btn">↻ Refresh</button></div><div id="liveCards" class="live-card-grid"></div></section>
+    <section id="liveLeaderboard" class="live-leaderboard-section hidden"><div class="player-section-head"><div><span class="card-eyebrow">LIVE RANKING</span><h2>Live Leaderboard</h2><p id="leaderboardQuizName">Join a live quiz to see the ranking.</p></div><button id="refreshLeaderboardBtn" class="secondary-btn">↻ Refresh</button></div><div id="leaderboardMe" class="leaderboard-me hidden"></div><div id="leaderboardTable" class="leaderboard-table"><div class="live-empty">No live leaderboard available.</div></div></section>
     <div class="account-bar"><span id="accountStatusMirror">Signed in.</span><button id="startBtn">Start Selected Quiz</button></div>
     <input id="playerName" type="text" maxlength="30" readonly class="hidden-input">
     <p id="playerMessage" class="admin-message"></p>

@@ -1,19 +1,11 @@
 
-## v21.2 — Live Join / Repeat Practice Fix
-- Uploaded/practice quizzes can be attempted repeatedly.
-- Live quizzes are limited to one attempt per live round per account.
-- Live Join now sends an explicit live-session request and uses the admin-defined live start/end window.
-- Leaving a live quiz does not reset its timer; the existing live session can be resumed until expiry.
-- Prevents a previous practice attempt from blocking a later live session of the same quiz.
-# v20.3 fixed
-
-- PDF importer now keeps English and Hindi in separate question fields and renders English first, Hindi directly below.
-- Added OCR fallback for PDFs whose Hindi Unicode mapping is broken; Docker image includes Poppler + Tesseract Devanagari OCR.
-- Added `questionEnglish` and `questionHindi` fields while keeping legacy `question` compatibility.
-- Admin question editor supports separate English/Hindi editing.
-- Added one-active-device session enforcement for player and admin accounts: a new login replaces the previous device session.
-- Added server-side logout endpoints to invalidate the active session.
-
+## v20.3 — Quiz UX + Live Session Fix
+- Reduced quiz question typography and spacing so options remain visible on laptop and mobile.
+- Removed the duplicate global “Start Selected Quiz” launch control; quiz cards now launch directly.
+- Added responsive quiz layout for phone/tablet/desktop.
+- Added live in-quiz leaderboard with rank, player, score, answered count and elapsed time.
+- Normal/published quizzes can be attempted repeatedly; live quizzes remain one-attempt-per-player.
+- Fixed missing live-board client function that could break live-session UI.
 # Changelog
 
 ## V16

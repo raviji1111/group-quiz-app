@@ -1526,9 +1526,56 @@ body.player-dark .classy-result h1 { color: #f8fafc; }
   #accountStatus { display:none; }
 }
 
-/* Bilingual question presentation: English first, Hindi on its own line. */
-.question-language { display:block; line-height:1.55; }
-.question-hindi { margin-top:10px; padding-top:10px; border-top:1px solid rgba(148,163,184,.18); }
-.bilingual-entry { align-items:stretch; }
-.question-language + .question-language { margin-top:10px; }
-@media (max-width: 760px) { .bilingual-entry { grid-template-columns:1fr !important; } }
+
+/* ===== V20.3 QUIZ READABILITY / DIRECT START / RESPONSIVE PATCH ===== */
+/* Keep the question compact so the answer choices are visible without excessive scrolling. */
+#quizScreen { padding: clamp(12px, 2vw, 24px); }
+.quiz-container { width: min(920px, 100%); }
+.quiz-container.classy-quiz { padding: 0; }
+.quiz-top { margin-bottom: 10px; font-size: 14px; }
+.progress-container { height: 6px; margin-bottom: 14px; }
+.question-box { padding: clamp(16px, 2.2vw, 22px); margin-bottom: 12px; border-radius: 14px; }
+.question-box h2,
+.quiz-container.classy-quiz #questionText { font-size: clamp(18px, 1.65vw, 21px) !important; line-height: 1.38 !important; letter-spacing: 0; }
+.question-meta { margin-bottom: 9px; gap: 6px; }
+.question-meta span { padding: 4px 8px; font-size: 10px; }
+.options { gap: 10px; margin-bottom: 12px; }
+.option { padding: 13px 15px; min-height: 50px; font-size: clamp(14px, 1.25vw, 16px); line-height: 1.35; border-radius: 10px; }
+.next-btn { min-height: 46px; }
+.violation-box { margin-top: 9px; }
+/* The quiz cards are the only launch controls; the old global "Start Selected Quiz" is hidden. */
+.quiz-catalog-card .catalog-bottom button { min-width: 92px; }
+.hidden-input { position: absolute !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important; }
+/* Live leaderboard shown inside the active live quiz. */
+.live-score-strip { display: block; margin-top: 12px; padding: 10px 12px; border-radius: 12px; font-size: 12px; background: #edf8f1; color: #23663b; }
+.live-board-title { font-weight: 900; margin-bottom: 7px; }
+.live-board-me { margin-bottom: 8px; font-weight: 800; }
+.live-board-table { display: grid; gap: 4px; }
+.live-board-row { display: grid; grid-template-columns: 34px minmax(0,1fr) 70px 70px 62px; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 8px; background: rgba(255,255,255,.55); font-size: 11px; }
+.live-board-row.me { outline: 1px solid #72b98a; }
+.live-board-head { font-weight: 800; opacity: .75; background: transparent; }
+.live-board-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 700px) {
+  #quizScreen { padding: 8px; align-items: flex-start; }
+  .quiz-container { width: 100%; }
+  .quiz-top { margin-bottom: 7px; font-size: 13px; }
+  #timer { min-width: 74px; padding: 7px 9px; }
+  .progress-container { margin-bottom: 9px; }
+  .question-box { padding: 14px; margin-bottom: 9px; }
+  .question-box h2,
+  .quiz-container.classy-quiz #questionText { font-size: 18px !important; line-height: 1.34 !important; }
+  .options { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .option { padding: 11px 12px; min-height: 46px; font-size: 14px; }
+  .next-btn { min-height: 44px; }
+  .live-board-row { grid-template-columns: 26px minmax(0,1fr) 48px 48px 52px; gap: 4px; font-size: 10px; }
+}
+@media (max-width: 430px) {
+  .options { grid-template-columns: 1fr; }
+  .question-box h2,
+  .quiz-container.classy-quiz #questionText { font-size: 17px !important; }
+  .option { font-size: 14px; }
+  .live-board-row { grid-template-columns: 24px minmax(0,1fr) 42px 42px 48px; }
+}
+body.player-dark .live-score-strip { background: #102a1b; color: #a7e0b7; }
+body.player-dark .live-board-row { background: rgba(255,255,255,.045); }
+body.player-dark .live-board-row.me { outline-color: #4f9b68; }

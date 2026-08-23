@@ -43,30 +43,6 @@ function formatMathText(value) {
   return text;
 }
 
-function questionParts(q) {
-  const english = String(q?.questionEnglish || '').trim();
-  const hindi = String(q?.questionHindi || '').trim();
-  if (english || hindi) return { english, hindi };
-  const legacy = String(q?.question || '').trim();
-  const lines = legacy.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
-  return {
-    english: lines.find(x => !/[\u0900-\u097F]/.test(x)) || (lines.length ? lines[0] : ''),
-    hindi: lines.find(x => /[\u0900-\u097F]/.test(x)) || ''
-  };
-}
-
-function formatQuestionHTML(q) {
-  const parts = questionParts(q);
-  const blocks = [];
-  if (parts.english) blocks.push(`<div class=\"question-language question-english\">${formatMathText(parts.english)}</div>`);
-  if (parts.hindi) blocks.push(`<div class=\"question-language question-hindi\">${formatMathText(parts.hindi)}</div>`);
-  return blocks.join('') || formatMathText(q?.question || '');
-}
-
-function setFormattedQuestion(el, q) {
-  if (el) el.innerHTML = formatQuestionHTML(q);
-}
-
 function setFormattedText(el, value) {
   if (el) el.innerHTML = formatMathText(value);
 }
@@ -81,7 +57,7 @@ async function api(path, options = {}) {
   const res = await fetch(`${API}${path}`, { ...options, headers: { ...baseHeaders, ...(options.headers || {}) } });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    if (res.status === 401) { logout(false); if (data.code === 'SESSION_REPLACED') loginMessage(data.message || 'This admin account is active on another device.'); }
+    if (res.status === 401) logout(false);
     throw new Error(data.message || 'Request failed.');
   }
   return data;
@@ -105,8 +81,7 @@ function showLogin() {
   $('dashboardView').classList.add('hidden');
   $('loginView').classList.remove('hidden');
 }
-async function logout(show = true) {
-  try { if (token) { const t = token; await fetch(`${API}/auth/logout`, { method: 'POST', headers: { Authorization: `Bearer ${t}` } }); } } catch {}
+function logout(show = true) {
   token = '';
   localStorage.removeItem('groupQuizAdminToken');
   showLogin();
@@ -133,7 +108,6 @@ function resetEditor() {
   $('quizTitle').value = '';
   $('quizSubject').value = '';
   $('quizTopic').value = '';
-  if ($('questionHindiInput')) $('questionHindiInput').value = '';
   $('quizTime').value = 10;
   $('joinStartAt').value = '';
   $('joinEndAt').value = '';
@@ -149,14 +123,13 @@ function resetEditor() {
 
 function addQuestion() {
   const question = $('questionInput').value.trim();
-  const questionHindi = $('questionHindiInput')?.value.trim() || '';
   const options = [$('optionA').value.trim(), $('optionB').value.trim(), $('optionC').value.trim(), $('optionD').value.trim()];
   const answer = Number($('correctAnswer').value);
   if (!question) return showMessage('Please enter the question.', true);
   if (options.some(x => !x)) return showMessage('Please fill all four options.', true);
-  questions.push({ question, questionEnglish: question, questionHindi, options, answer });
+  questions.push({ question, options, answer });
   renderQuestions();
-  ['questionInput','questionHindiInput','optionA','optionB','optionC','optionD'].forEach(id => { if($(id)) $(id).value = ''; });
+  ['questionInput','optionA','optionB','optionC','optionD'].forEach(id => $(id).value = '');
   $('correctAnswer').value = '0';
   $('questionInput').focus();
 }
@@ -167,7 +140,7 @@ function renderQuestions() {
   $('questionList').innerHTML = questions.length ? '' : '<div class="empty-state">No questions added yet.</div>';
   questions.forEach((q, index) => {
     const item = document.createElement('div'); item.className = 'question-item';
-    const title = document.createElement('h3'); title.innerHTML = `${index + 1}. ${formatQuestionHTML(q)}`; item.appendChild(title);
+    const title = document.createElement('h3'); title.innerHTML = `${index + 1}. ${formatMathText(q.question)}`; item.appendChild(title);
     const options = document.createElement('div'); options.className = 'question-options';
     q.options.forEach((opt, oi) => { const el = document.createElement('div'); el.className = 'question-option' + (oi === q.answer ? ' correct-option' : ''); el.innerHTML = `${String.fromCharCode(65 + oi)}. ${formatMathText(opt)}`; options.appendChild(el); });
     item.appendChild(options);
@@ -242,7 +215,7 @@ async function editQuiz(id) {
   $('showLeaderboard').value = quiz.showLeaderboard === false ? 'off' : 'on';
     $('maxViolations').value = quiz.maxViolations;
     $('examMode').value = quiz.examMode ? 'on' : 'off';
-    questions = quiz.questions.map(q => ({ question: q.question, questionEnglish: q.questionEnglish || '', questionHindi: q.questionHindi || '', options: [...q.options], answer: q.answer }));
+    questions = quiz.questions.map(q => ({ question: q.question, options: [...q.options], answer: q.answer }));
     renderQuestions();
   } catch (e) { showMessage(e.message, true); }
 }
@@ -390,7 +363,7 @@ function renderQuestions() {
     item.dataset.questionIndex = index;
 
     const title = document.createElement('h3');
-    title.innerHTML = `${index + 1}. ${formatQuestionHTML(q)}`;
+    title.innerHTML = `${index + 1}. ${formatMathText(q.question)}`;
     item.appendChild(title);
 
     const options = document.createElement('div');
@@ -441,16 +414,9 @@ function startInlineQuestionEdit(index) {
   const question = document.createElement('textarea');
   question.className = 'inline-question-input';
   question.rows = 3;
-  question.value = q.questionEnglish || q.question || '';
-  question.placeholder = 'Question (English)';
+  question.value = q.question;
+  question.placeholder = 'Question';
   item.appendChild(question);
-
-  const questionHindi = document.createElement('textarea');
-  questionHindi.className = 'inline-question-input';
-  questionHindi.rows = 3;
-  questionHindi.value = q.questionHindi || '';
-  questionHindi.placeholder = 'Question (Hindi)';
-  item.appendChild(questionHindi);
 
   const grid = document.createElement('div');
   grid.className = 'inline-options-grid';
@@ -500,9 +466,7 @@ function startInlineQuestionEdit(index) {
 
   save.onclick = async () => {
     const updated = {
-      question: [question.value.trim(), questionHindi.value.trim()].filter(Boolean).join('\n'),
-      questionEnglish: question.value.trim(),
-      questionHindi: questionHindi.value.trim(),
+      question: question.value.trim(),
       options: optionInputs.map(input => input.value.trim()),
       answer: Number(correct.value)
     };
@@ -519,8 +483,6 @@ function startInlineQuestionEdit(index) {
         });
         questions[index] = {
           question: result.question.question,
-          questionEnglish: result.question.questionEnglish || '',
-          questionHindi: result.question.questionHindi || '',
           options: [...result.question.options],
           answer: result.question.answer
         };
@@ -542,10 +504,10 @@ function startInlineQuestionEdit(index) {
 
 function startQuestionEdit(index){
   const q=questions[index]; editingQuestionIndex=index; $('questionEditorHeading').textContent=`Edit Question ${index+1}`;
-  $('questionInput').value=q.questionEnglish || q.question || ''; if($('questionHindiInput')) $('questionHindiInput').value=q.questionHindi || ''; ['A','B','C','D'].forEach((l,i)=>$(`option${l}`).value=q.options[i]||''); $('correctAnswer').value=String(q.answer);
+  $('questionInput').value=q.question; ['A','B','C','D'].forEach((l,i)=>$(`option${l}`).value=q.options[i]||''); $('correctAnswer').value=String(q.answer);
   $('addQuestionBtn').textContent='✓ Update Question'; $('cancelQuestionEditBtn').classList.remove('hidden'); openAdminSection('createSection'); openEditorPanel('questionPanel');
 }
-function cancelQuestionEdit(){editingQuestionIndex=-1;$('questionEditorHeading').textContent='Add Question';$('addQuestionBtn').textContent='＋ Add Question';$('cancelQuestionEditBtn').classList.add('hidden');['questionInput','questionHindiInput','optionA','optionB','optionC','optionD'].forEach(id=>{if($(id))$(id).value='';});$('correctAnswer').value='0';}
+function cancelQuestionEdit(){editingQuestionIndex=-1;$('questionEditorHeading').textContent='Add Question';$('addQuestionBtn').textContent='＋ Add Question';$('cancelQuestionEditBtn').classList.add('hidden');['questionInput','optionA','optionB','optionC','optionD'].forEach(id=>$(id).value='');$('correctAnswer').value='0';}
 $('cancelQuestionEditBtn').addEventListener('click',cancelQuestionEdit);
 
 // ===== BULK COPY/PASTE IMPORT =====
@@ -611,7 +573,7 @@ $('clearBulkBtn')?.addEventListener('click', () => { $('bulkQuestionsInput').val
 $('addQuestionBtn').addEventListener('click',()=>{
   const question=$('questionInput').value.trim(), options=[$('optionA').value.trim(),$('optionB').value.trim(),$('optionC').value.trim(),$('optionD').value.trim()], answer=Number($('correctAnswer').value);
   if(!question)return showMessage('Please enter the question.',true); if(options.some(x=>!x))return showMessage('Please fill all four options.',true);
-  if(editingQuestionIndex>=0) questions[editingQuestionIndex]={question, questionEnglish: question, questionHindi: $('questionHindiInput')?.value.trim() || '', options, answer}; else questions.push({question, questionEnglish: question, questionHindi: $('questionHindiInput')?.value.trim() || '', options, answer});
+  if(editingQuestionIndex>=0) questions[editingQuestionIndex]={question,options,answer}; else questions.push({question,options,answer});
   renderQuestions(); cancelQuestionEdit(); $('questionInput').focus();
 });
 $('newQuizBtn').addEventListener('click',()=>{resetEditor();openAdminSection('createSection');openEditorPanel('settingsPanel');});

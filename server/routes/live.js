@@ -28,7 +28,8 @@ router.get('/:id/board', requirePlayer, async (req, res) => {
       let score = 0;
       quiz.questions.forEach((q, i) => { if (s.answers?.[i] === q.answer) score++; });
       const answered = (s.answers || []).filter(a => Number.isInteger(a) && a >= 0).length;
-      return { playerName: s.playerName, score, total: quiz.questions.length, answered, joinedAt: s.joinedAt };
+      const elapsedSeconds = Math.max(0, Math.round((Date.now() - new Date(s.joinedAt || s.startedAt).getTime()) / 1000));
+      return { playerName: s.playerName, score, total: quiz.questions.length, answered, joinedAt: s.joinedAt, elapsedSeconds };
     }).sort((a,b) => b.score-a.score || a.answered-b.answered || new Date(a.joinedAt)-new Date(b.joinedAt));
     const board = quiz.showLeaderboard ? rows.slice(0, 100).map((r,i)=>({...r,rank:i+1})) : [];
     let me = null;

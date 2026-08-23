@@ -69,30 +69,6 @@ function formatMathText(value) {
   return text;
 }
 
-function questionParts(q) {
-  const english = String(q?.questionEnglish || '').trim();
-  const hindi = String(q?.questionHindi || '').trim();
-  if (english || hindi) return { english, hindi };
-  const legacy = String(q?.question || '').trim();
-  const lines = legacy.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
-  return {
-    english: lines.find(x => !/[\u0900-\u097F]/.test(x)) || (lines.length ? lines[0] : ''),
-    hindi: lines.find(x => /[\u0900-\u097F]/.test(x)) || ''
-  };
-}
-
-function formatQuestionHTML(q) {
-  const parts = questionParts(q);
-  const blocks = [];
-  if (parts.english) blocks.push(`<div class=\"question-language question-english\">${formatMathText(parts.english)}</div>`);
-  if (parts.hindi) blocks.push(`<div class=\"question-language question-hindi\">${formatMathText(parts.hindi)}</div>`);
-  return blocks.join('') || formatMathText(q?.question || '');
-}
-
-function setFormattedQuestion(el, q) {
-  if (el) el.innerHTML = formatQuestionHTML(q);
-}
-
 function setFormattedText(el, value) {
   if (el) el.innerHTML = formatMathText(value);
 }
@@ -130,51 +106,13 @@ if (themeToggle) {
 }
 
 
-function clearPlayerSession(message = 'Session expired, please login again.') {
-  playerToken = '';
-  loggedPlayer = null;
-  localStorage.removeItem('groupQuizPlayerToken');
-  localStorage.removeItem('groupQuizPlayer');
-  localStorage.removeItem(SESSION_STORAGE_KEY);
-  updateAccountUI();
-  if ($('accountMessage')) {
-    $('accountMessage').textContent = message;
-    $('accountMessage').classList.add('error');
-  }
-  if ($('playerMessage')) {
-    $('playerMessage').textContent = message;
-    $('playerMessage').classList.add('error');
-  }
-  if (quizStarted) {
-    quizStarted = false;
-    clearInterval(timerInterval);
-    clearInterval(liveScoreInterval);
-    clearTimeout(monitoringTimer);
-    clearTimeout(waitingTimer);
-    violationMonitoringReady = false;
-    quizScreen?.classList.remove('active');
-    startScreen?.classList.add('active');
-  }
-  $('authGate')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
 async function api(path, options = {}) {
-  const hadPlayerToken = Boolean(playerToken);
   const res = await fetch(`${API}${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...(playerToken ? { Authorization: `Bearer ${playerToken}` } : {}), ...(options.headers || {}) } });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const sessionCodes = ['SESSION_EXPIRED', 'INVALID_SESSION', 'SESSION_REPLACED'];
-    if (res.status === 401 && hadPlayerToken && sessionCodes.includes(data.code)) {
-      clearPlayerSession(data.code === 'SESSION_REPLACED' ? 'Your account was signed in on another device. Please login again.' : 'Session expired, please login again.');
-    }
-    const error = new Error(data.message || 'Request failed.');
-    error.code = data.code;
-    error.status = res.status;
-    throw error;
-  }
+  if (!res.ok) throw new Error(data.message || 'Request failed.');
   return data;
 }
-function playerMessage(msg, error = false) { $('playerMessage').textContent = msg; $('playerMessage').classList.toggle('error', error); }
+function playerMessage(msg, error = false) { const el=$('playerMessage'); if(el){el.textContent=msg; el.classList.toggle('error', error);} }
 
 function setAuthView() {
   const gate = $('authGate');
@@ -205,8 +143,7 @@ function updateAccountUI() {
   }
 }
 
-async function logoutPlayer() {
-  try { if (playerToken) await api('/player/logout', { method: 'POST' }); } catch {}
+function logoutPlayer() {
   playerToken = '';
   loggedPlayer = null;
   localStorage.removeItem('groupQuizPlayerToken');
@@ -295,7 +232,6 @@ async function loadQuizList() {
     renderQuizCards(quizzes);
     await loadLiveQuizzes();
   } catch (e) {
-    if (e.code === 'SESSION_EXPIRED' || e.code === 'INVALID_SESSION' || e.code === 'SESSION_REPLACED') return;
     quizSelect.innerHTML = '<option value="">Could not load quizzes</option>';
     startBtn.disabled = true;
     playerMessage(e.message, true);
@@ -380,22 +316,47 @@ function renderLiveCards(quizzes) {
   });
 }
 
-async function startQuiz(forceLive = false) {
+async function startQuiz(forceSelected = false) {
   if (!loggedPlayer || !playerToken) { accountPanel.classList.remove('hidden'); return playerMessage('Please register or login before attempting a quiz.', true); }
   playerName = loggedPlayer.name;
   const quizId = quizSelect.value;
   if (!playerName) return playerMessage('Please enter your name.', true);
-  if (!quizId) return playerMessage('Please select a quiz.', true);
+  if (!quizId) return playerMessage('Please select a quiz from the quiz card.', true);
   try {
     startBtn.disabled = true;
     const data = await api(`/quizzes/${quizId}/public`);
     quiz = data.quiz;
-    const isLive = forceLive || quiz.liveStatus === 'live';
+    const isLive = quiz.liveStatus === 'live';
     const session = await api('/attempts/start', { method: 'POST', body: JSON.stringify({ quizId, playerName, live: isLive }) });
     playerName = session.playerName || playerName;
     localStorage.setItem(SESSION_STORAGE_KEY, String(session.sessionId));
     await setupSession(session, quiz);
   } catch (e) { playerMessage(e.message, true); } finally { startBtn.disabled = false; }
+}
+
+async function showLiveBoard() {
+  const strip = $('liveScoreStrip');
+  if (!strip || !quiz || quiz.liveStatus !== 'live' || !quiz._id) { if (strip) strip.classList.add('hidden'); return; }
+  try {
+    const data = await api(`/live/${encodeURIComponent(quiz._id)}/board`);
+    if (!data.quiz?.showLeaderboard && !data.quiz?.showLiveScore) { strip.classList.add('hidden'); return; }
+    const me = data.me;
+    const rows = Array.isArray(data.leaderboard) ? data.leaderboard : [];
+    let html = '<div class="live-board-title">🏆 Live Leaderboard</div>';
+    if (me && data.quiz.showLiveScore) html += `<div class="live-board-me">You: ${me.score}/${me.total} · ${me.answered} answered</div>`;
+    if (data.quiz.showLeaderboard) {
+      html += '<div class="live-board-table"><div class="live-board-row live-board-head"><span>#</span><span>Player</span><span>Score</span><span>Done</span><span>Time</span></div>';
+      rows.slice(0, 10).forEach(r => {
+        const sec = Math.max(0, Math.round((Date.now() - new Date(r.joinedAt).getTime()) / 1000));
+        const mm = Math.floor(sec / 60), ss = sec % 60;
+        const mine = loggedPlayer && r.playerName === loggedPlayer.name ? ' me' : '';
+        html += `<div class="live-board-row${mine}"><span>${r.rank}</span><span class="live-board-name">${escapeHtml(r.playerName)}</span><span>${r.score}/${r.total}</span><span>${r.answered}</span><span>${mm}:${String(ss).padStart(2,'0')}</span></div>`;
+      });
+      html += '</div>';
+    }
+    if (!rows.length) html += '<div>No participants yet.</div>';
+    strip.innerHTML = html; strip.classList.remove('hidden');
+  } catch (e) { strip.classList.add('hidden'); }
 }
 
 async function setupSession(session, quizData) {
@@ -456,14 +417,14 @@ async function resumeStoredSession() {
   }
 }
 
-startBtn.addEventListener('click', startQuiz);
+startBtn?.addEventListener('click', () => startQuiz());
 playerNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') startQuiz(); });
 
 function loadQuestion() {
   const q = questions[currentQuestion];
   if (!q) return finishQuiz();
   selectedAnswer = answers[currentQuestion] >= 0 ? answers[currentQuestion] : null;
-  questionNumber.textContent = currentQuestion + 1; setFormattedQuestion(questionText, q); optionsContainer.innerHTML = '';
+  questionNumber.textContent = currentQuestion + 1; setFormattedText(questionText, q.question); optionsContainer.innerHTML = '';
   q.options.forEach((option, index) => {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'option'; button.innerHTML = `${String.fromCharCode(65 + index)}. ${formatMathText(option)}`;
     if (index === selectedAnswer) button.classList.add('selected');

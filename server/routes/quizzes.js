@@ -217,22 +217,13 @@ function normalizeQuiz(body, adminId) {
   if (!questions.length) throw new Error('At least one question is required.');
 
   const cleaned = questions.map((q, i) => {
-    let questionEnglish = String(q.questionEnglish || '').trim();
-    let questionHindi = String(q.questionHindi || '').trim();
-    const legacyQuestion = String(q.question || '').trim();
-    if (!questionEnglish && !questionHindi && legacyQuestion) {
-      const parts = legacyQuestion.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
-      questionEnglish = parts.find(x => !/[\u0900-\u097F]/.test(x)) || '';
-      questionHindi = parts.find(x => /[\u0900-\u097F]/.test(x)) || '';
-      if (!questionEnglish && !questionHindi) questionEnglish = legacyQuestion;
-    }
-    const question = [questionEnglish, questionHindi].filter(Boolean).join('\n') || legacyQuestion;
+    const question = String(q.question || '').trim();
     const options = Array.isArray(q.options) ? q.options.map(x => String(x || '').trim()) : [];
     const answer = Number(q.answer);
     if (!question || options.length !== 4 || options.some(x => !x) || !Number.isInteger(answer) || answer < 0 || answer > 3) {
       throw new Error(`Invalid question ${i + 1}.`);
     }
-    return { question, questionEnglish, questionHindi, options, answer };
+    return { question, options, answer };
   });
 
   return { title, subject, topic, time, liveDuration, maxViolations, examMode, questions: cleaned, createdBy: adminId, isPublished: true, joinStartAt, joinEndAt, scheduledStartAt, showLiveScore: body.showLiveScore !== false, showLeaderboard: body.showLeaderboard !== false };
@@ -240,7 +231,7 @@ function normalizeQuiz(body, adminId) {
 
 router.get('/public', requirePlayer, async (req, res) => {
   try {
-    const quizzes = await Quiz.find({ isPublished: true }).sort({ createdAt: -1 }).select('_id title subject topic time maxViolations examMode joinStartAt joinEndAt scheduledStartAt liveStatus liveStartedAt liveEndsAt showLiveScore showLeaderboard questions.question questions.questionEnglish questions.questionHindi questions.options');
+    const quizzes = await Quiz.find({ isPublished: true }).sort({ createdAt: -1 }).select('_id title subject topic time maxViolations examMode joinStartAt joinEndAt scheduledStartAt liveStatus liveStartedAt liveEndsAt showLiveScore showLeaderboard questions.question questions.options');
     res.json({ quizzes });
   } catch (error) {
     console.error(error);
@@ -270,7 +261,7 @@ router.get('/:id/admin', requireAdmin, async (req, res) => {
 
 router.get('/:id/public', requirePlayer, async (req, res) => {
   try {
-    const quiz = await Quiz.findOne({ _id: req.params.id, isPublished: true }).select('_id title subject topic time maxViolations examMode joinStartAt joinEndAt scheduledStartAt liveStatus liveStartedAt liveEndsAt showLiveScore showLeaderboard questions.question questions.questionEnglish questions.questionHindi questions.options');
+    const quiz = await Quiz.findOne({ _id: req.params.id, isPublished: true }).select('_id title subject topic time maxViolations examMode joinStartAt joinEndAt scheduledStartAt liveStatus liveStartedAt liveEndsAt showLiveScore showLeaderboard questions.question questions.options');
     if (!quiz) return res.status(404).json({ message: 'Quiz not found.' });
     res.json({ quiz });
   } catch {

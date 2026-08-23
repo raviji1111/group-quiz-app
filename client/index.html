@@ -30,9 +30,9 @@
   <div id="quizHubContent" class="quiz-hub-content hidden">
     <div class="player-hero"><div><span class="hero-kicker">QUIZ HUB</span><h1>Welcome back,<br><em>keep learning.</em></h1><p>Choose a subject, open a topic and start a focused practice test.</p></div><div class="hero-badge">✦<span>Classy<br>Quiz Experience</span></div></div>
     <section class="subject-section"><div class="player-section-head"><div><span class="card-eyebrow">EXPLORE</span><h2>Subjects</h2></div><p>Choose a subject to see its topics</p></div><div id="subjectGrid" class="subject-grid"></div></section>
-    <section id="quizCatalog" class="catalog-section"><div class="player-section-head"><div><span class="card-eyebrow">QUIZZES</span><h2 id="catalogTitle">All Quizzes</h2></div><select id="quizSelect" class="player-select"><option value="">Loading quizzes...</option></select></div><div id="topicFilter" class="topic-filter"></div><div id="quizCards" class="quiz-card-grid"></div></section>
+    <section id="quizCatalog" class="catalog-section"><div class="player-section-head"><div><span class="card-eyebrow">QUIZZES</span><h2 id="catalogTitle">All Quizzes</h2></div><select id="quizSelect" class="hidden-input"><option value="">Loading quizzes...</option></select></div><div id="topicFilter" class="topic-filter"></div><div id="quizCards" class="quiz-card-grid"></div></section>
     <section id="livePreview" class="live-preview-section"><div class="player-section-head"><div><span class="card-eyebrow live-eyebrow">LIVE NOW</span><h2>Live Quiz</h2></div><button id="refreshLiveBtn" class="secondary-btn">↻ Refresh</button></div><div id="liveCards" class="live-card-grid"></div></section>
-    <div class="account-bar"><span id="accountStatusMirror">Signed in.</span><button id="startBtn">Start Selected Quiz</button></div>
+    <button id="startBtn" class="hidden-input" type="button" aria-hidden="true">Start</button>
     <input id="playerName" type="text" maxlength="30" readonly class="hidden-input">
     <p id="playerMessage" class="admin-message"></p>
   </div>

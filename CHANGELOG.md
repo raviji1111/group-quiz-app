@@ -77,3 +77,11 @@ Browser anti-cheat controls cannot guarantee prevention of all cheating. They sh
 - Added subject/topic browsing chips and cleaner topic-wise quiz cards.
 - Added logout behavior from the player account button.
 - Kept live quiz, live score, leaderboard, PDF import, answer key and mixed-fraction features intact.
+
+## v20 — PDF import selection + bilingual preservation
+- PDF → Quiz now supports importing all detected questions, first N questions, or a question-number range.
+- PDF parsing now handles multiple A/B/C/D options appearing on the same line.
+- English + Hindi text lines are preserved together in each imported question when the PDF exposes them as text.
+- Fixed question-number detection so decimal values such as `12.75%` are not mistaken for question 12.
+- Improved PDF import messages with detected/imported counts and answer-key matching.
+- Added PDF import controls and language-preservation guidance to the admin UI.

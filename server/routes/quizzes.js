@@ -31,7 +31,7 @@ function parseAnswerKey(text) {
   return key;
 }
 
-function parsePdfQuestions(text, suppliedAnswerKey = '') {
+function parsePdfQuestions(text, suppliedAnswerKey = '', selection = {}) {
   const raw = String(text || '').replace(/\r/g, '').replace(/\u00a0/g, ' ');
   const lines = raw.split('\n').map(line => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
   const answerKey = parseAnswerKey(suppliedAnswerKey || raw);
@@ -41,11 +41,13 @@ function parsePdfQuestions(text, suppliedAnswerKey = '') {
 
   const finish = () => {
     if (!current) return;
-    const ok = current.question.trim() && current.options.every(Boolean);
+    const questionText = current.question.trim();
+    const ok = questionText && current.options.every(Boolean);
     if (ok) {
       const answer = Number.isInteger(answerKey[current.number]) ? answerKey[current.number] : 0;
       items.push({
-        question: current.question.trim(),
+        number: current.number,
+        question: questionText,
         options: current.options.map(x => x.trim()),
         answer
       });
@@ -54,18 +56,33 @@ function parsePdfQuestions(text, suppliedAnswerKey = '') {
     option = null;
   };
 
+  // A PDF often puts A/B on the same line (and C/D on the next line).
+  // Split every option marker instead of assuming one option per line.
+  const optionParts = (line) => {
+    const re = /(?:^|\s)(?:\[\s*([A-Da-d])\s*\]|([A-Da-d])\s*[.)\-:])\s*/g;
+    const matches = [];
+    let m;
+    while ((m = re.exec(line))) {
+      matches.push({ index: m.index, end: re.lastIndex, letter: (m[1] || m[2]).toUpperCase() });
+    }
+    if (!matches.length) return null;
+    return matches.map((m, i) => ({
+      letter: m.letter,
+      text: line.slice(m.end, i + 1 < matches.length ? matches[i + 1].index : line.length).trim()
+    }));
+  };
+
   for (const originalLine of lines) {
     const line = originalLine.replace(/^\*+|\*+$/g, '').trim();
 
-    // Do not accidentally append the answer-key section to the last option.
     if (/^(?:answer\s*key|answers?|उत्तर\s*कुंजी|उत्तर\s*तालिका)\b/i.test(line)) {
       finish();
       continue;
     }
+    if (/^BY\s+Gagan\s+Pratap$/i.test(line)) continue;
 
-    const qMatch = line.match(/^(?:Q(?:uestion)?\s*)?(\d{1,3})\s*[.)\-:]\s*(?:\*\*\d{1,3}\.?\*\*\s*)?(.+)$/i);
-    const oMatch = line.match(/^(?:\[\s*([A-Da-d])\s*\]|([A-Da-d]))\s*[.)\-:]?\s*(.*)$/);
-
+    // Accept both `7. Question` and a question number on its own line.
+    const qMatch = line.match(/^(?:Q(?:uestion)?\s*)?(\d{1,3})\s*[.)\-:]\s+(?:\*\*\d{1,3}\.?\*\*\s*)?(.*)$/i);
     if (qMatch) {
       finish();
       current = {
@@ -77,27 +94,40 @@ function parsePdfQuestions(text, suppliedAnswerKey = '') {
       continue;
     }
 
-    if (oMatch) {
-      if (!current) continue;
-      option = 'ABCD'.indexOf((oMatch[1] || oMatch[2]).toUpperCase());
-      if (option >= 0) current.options[option] = oMatch[3].trim();
+    if (!current) continue;
+
+    const parts = optionParts(line);
+    if (parts) {
+      for (const part of parts) {
+        const idx = 'ABCD'.indexOf(part.letter);
+        if (idx < 0) continue;
+        option = idx;
+        if (part.text) current.options[idx] = `${current.options[idx]} ${part.text}`.trim();
+      }
       continue;
     }
 
-    if (current) {
-      if (option !== null) current.options[option] = `${current.options[option]} ${line}`.trim();
-      else current.question = `${current.question} ${line}`.trim();
-    }
+    // Preserve both English and Hindi lines. If we are inside an option, append
+    // to that option; otherwise append to the question text.
+    if (option !== null) current.options[option] = `${current.options[option]} ${line}`.trim();
+    else current.question = `${current.question} ${line}`.trim();
   }
   finish();
 
-  // Keep the answer-key matching count useful for the admin UI.
-  const answerKeyMatched = items.reduce((n, q) => {
-    const idx = items.indexOf(q) + 1;
-    return n + (Number.isInteger(answerKey[q.number]) ? 1 : 0);
-  }, 0);
+  const normalizedSelection = selection || {};
+  const mode = String(normalizedSelection.mode || 'all');
+  let selected = items;
+  if (mode === 'first') {
+    const count = Math.max(1, Math.min(items.length, Number(normalizedSelection.count) || items.length));
+    selected = items.slice(0, count);
+  } else if (mode === 'range') {
+    const start = Math.max(1, Number(normalizedSelection.start) || 1);
+    const end = Math.max(start, Number(normalizedSelection.end) || items.length);
+    selected = items.filter(q => q.number >= start && q.number <= end);
+  }
 
-  return { items: items.slice(0, 1000), answerKeyMatched };
+  const answerKeyMatched = selected.reduce((n, q) => n + (Number.isInteger(answerKey[q.number]) ? 1 : 0), 0);
+  return { items: selected.slice(0, 1000), totalDetected: items.length, answerKeyMatched };
 }
 
 router.post('/import-pdf', requireAdmin, upload.single('pdf'), async (req, res) => {
@@ -106,7 +136,12 @@ router.post('/import-pdf', requireAdmin, upload.single('pdf'), async (req, res) 
     if (req.file.mimetype !== 'application/pdf' && !req.file.originalname.toLowerCase().endsWith('.pdf')) return res.status(400).json({ message: 'Only PDF files are supported.' });
 
     const parsed = await pdfParse(req.file.buffer);
-    const result = parsePdfQuestions(parsed.text, req.body?.answerKey || '');
+    const result = parsePdfQuestions(parsed.text, req.body?.answerKey || '', {
+      mode: req.body?.importMode || 'all',
+      count: req.body?.questionCount,
+      start: req.body?.startQuestion,
+      end: req.body?.endQuestion
+    });
     const questions = result.items;
 
     if (!questions.length) {
@@ -118,6 +153,7 @@ router.post('/import-pdf', requireAdmin, upload.single('pdf'), async (req, res) 
     res.json({
       questions,
       count: questions.length,
+      totalDetected: result.totalDetected,
       pages: parsed.numpages || 0,
       answerKeyMatched: result.answerKeyMatched
     });

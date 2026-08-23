@@ -619,6 +619,15 @@ loadAll=async function(){await oldLoadAll();openAdminSection('dashboardSection')
 async function loadRecentAttempts(){try{const d=await api('/attempts');const body=$('recentBody');body.innerHTML='';(d.attempts||[]).slice(0,8).forEach(a=>{const tr=document.createElement('tr');[a.playerName,a.quiz?.title||'Deleted quiz',`${a.score}/${a.total} (${a.percentage}%)`,a.status,new Date(a.createdAt).toLocaleString()].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td)});body.appendChild(tr)});if(!d.attempts?.length)body.innerHTML='<tr><td colspan="5">No attempts yet.</td></tr>'}catch(e){}}
 
 
+/* ===== PDF import controls ===== */
+function syncPdfImportFields() {
+  const mode = $('pdfImportMode')?.value || 'all';
+  document.querySelectorAll('.pdf-first-count').forEach(el => el.classList.toggle('hidden', mode !== 'first'));
+  document.querySelectorAll('.pdf-range-fields').forEach(el => el.classList.toggle('hidden', mode !== 'range'));
+}
+$('pdfImportMode')?.addEventListener('change', syncPdfImportFields);
+syncPdfImportFields();
+
 /* ===== V11 PDF IMPORT + USER MANAGEMENT ===== */
 async function importQuestionsFromPdf() {
   const file = $('pdfQuestionFile')?.files?.[0];
@@ -631,6 +640,14 @@ async function importQuestionsFromPdf() {
   const key = $('pdfAnswerKey')?.value.trim() || '';
   if (key) form.append('answerKey', key);
 
+  const mode = $('pdfImportMode')?.value || 'all';
+  form.append('importMode', mode);
+  if (mode === 'first') form.append('questionCount', $('pdfQuestionCount')?.value || '50');
+  if (mode === 'range') {
+    form.append('startQuestion', $('pdfStartQuestion')?.value || '1');
+    form.append('endQuestion', $('pdfEndQuestion')?.value || '50');
+  }
+
   const button = $('parsePdfBtn');
   try {
     if (msg) { msg.classList.remove('error'); msg.textContent = 'Reading PDF and matching answers…'; }
@@ -642,8 +659,8 @@ async function importQuestionsFromPdf() {
     const unmatched = Math.max(0, Number(data.count || 0) - matched);
     if (msg) {
       msg.textContent = matched
-        ? `✓ ${data.count} questions imported. ${matched} correct answers matched automatically${unmatched ? `; ${unmatched} still need review` : ''}.`
-        : `${data.count} questions imported. No answer key was detected, so answers are set to A until you edit them.`;
+        ? `✓ ${data.count} questions imported from ${data.totalDetected || data.count} detected. ${matched} correct answers matched automatically${unmatched ? `; ${unmatched} still need review` : ''}.`
+        : `✓ ${data.count} questions imported from ${data.totalDetected || data.count} detected. No answer key was matched, so unmatched answers are set to A until you edit them.`;
     }
     $('pdfQuestionFile').value = '';
     if ($('pdfAnswerKey')) $('pdfAnswerKey').value = '';

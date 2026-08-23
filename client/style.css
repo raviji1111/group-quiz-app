@@ -1396,3 +1396,10 @@ body.sidebar-open .sidebar-overlay {
   .editor-menu-title,.editor-menu-help{grid-column:auto}
   .editor-save-bar{position:sticky;bottom:6px;flex-wrap:wrap}
 }
+
+/* PDF importer controls */
+.pdf-import-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:12px;margin-top:14px}
+.pdf-import-extra.hidden{display:none!important}
+.import-language-note{margin:12px 0;padding:12px 14px;border:1px solid rgba(90,130,220,.25);border-radius:12px;background:rgba(45,82,160,.08);color:#b9c8e8;font-size:13px;line-height:1.5}
+@media(max-width:900px){.pdf-import-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.pdf-import-grid{grid-template-columns:1fr}}

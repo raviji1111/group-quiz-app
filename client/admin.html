@@ -126,6 +126,13 @@
             <div id="pdfImportBox" class="admin-card bulk-import-box pdf-import-box">
               <div class="section-header"><div><span class="card-eyebrow">FAST IMPORT</span><h3>📄 PDF → Quiz</h3><p class="card-muted">Upload the question PDF. The importer detects A/B/C/D options and can apply an answer key automatically.</p></div><span class="import-badge">AUTO</span></div>
               <input id="pdfQuestionFile" type="file" accept="application/pdf">
+              <div class="pdf-import-grid">
+                <div class="form-group compact"><label>Questions to import</label><select id="pdfImportMode"><option value="all">All detected questions</option><option value="first">First N questions</option><option value="range">Question range</option></select></div>
+                <div class="form-group compact pdf-import-extra pdf-first-count hidden"><label>First N</label><input id="pdfQuestionCount" type="number" min="1" value="50" placeholder="50"></div>
+                <div class="form-group compact pdf-import-extra pdf-range-fields hidden"><label>From question</label><input id="pdfStartQuestion" type="number" min="1" value="1"></div>
+                <div class="form-group compact pdf-import-extra pdf-range-fields hidden"><label>To question</label><input id="pdfEndQuestion" type="number" min="1" value="50"></div>
+              </div>
+              <div class="import-language-note"><strong>🌐 Language:</strong> Automatic — if the PDF has English + Hindi text, both are imported together in the same question. Maths/fraction text is preserved whenever it is available as PDF text.</div>
               <div class="form-group compact import-key-field"><label>Answer Key (optional)</label><input id="pdfAnswerKey" placeholder="Example: 1(b) 2(a) 3(b) 4(c) 5(c) ..."><small>Leave blank if the PDF contains a readable answer key. You can edit any detected answer later.</small></div>
               <div class="form-actions"><button id="parsePdfBtn" type="button">⚡ Read PDF & Auto Answers</button></div>
               <p id="pdfMessage" class="admin-message"></p>

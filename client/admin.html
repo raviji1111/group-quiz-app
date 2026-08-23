@@ -14,6 +14,9 @@
 </section>
 
 <section id="dashboardView" class="hidden admin-shell">
+  <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Open admin menu">☰</button>
+  <div class="sidebar-hover-zone" aria-hidden="true"></div>
+  <div id="sidebarOverlay" class="sidebar-overlay"></div>
   <aside class="admin-sidebar">
     <div class="brand"><div class="brand-mark">GQ</div><div><strong>Group Quiz</strong><small>Admin Panel</small></div></div>
     <nav class="sidebar-nav">
@@ -28,12 +31,55 @@
   </aside>
 
   <main class="admin-main">
-    <header class="topbar"><div><h1 id="pageTitle">Dashboard</h1><p id="pageSubtitle">Overview of your quiz platform.</p></div><div class="admin-profile"><span>●</span><div><strong>Administrator</strong><small>Online</small></div></div></header>
+    <header class="topbar">
+  <div class="topbar-title">
+    <div class="eyebrow">GROUP QUIZ ADMIN</div>
+    <h1 id="pageTitle">Dashboard</h1>
+    <p id="pageSubtitle">Overview of your quiz platform.</p>
+  </div>
+  <div class="topbar-right">
+    <a href="index.html" target="_blank" class="topbar-open">▶ Open Quiz</a>
+    <div class="admin-profile"><span>●</span><div><strong>Administrator</strong><small>Online</small></div></div>
+  </div>
+</header>
 
     <section id="dashboardSection" class="admin-section active-section">
-      <div class="stats-grid"><div class="stat-card"><span>Total Quizzes</span><strong id="statQuizzes">0</strong></div><div class="stat-card"><span>Total Attempts</span><strong id="statAttempts">0</strong></div><div class="stat-card"><span>Average Score</span><strong id="statAverage">0%</strong></div><div class="stat-card"><span>Violations</span><strong id="statViolations">0</strong></div></div>
-      <div class="dashboard-grid"><section class="admin-card"><div class="section-header"><div><h2>Recent Attempts</h2><p class="card-muted">Latest student submissions</p></div><button class="secondary-btn" data-go="resultsSection">View All</button></div><div class="table-wrap"><table><thead><tr><th>Student</th><th>Quiz</th><th>Score</th><th>Status</th><th>Date</th></tr></thead><tbody id="recentBody"></tbody></table></div></section>
-      <section class="admin-card"><div class="section-header"><div><h2>Quick Actions</h2><p class="card-muted">Jump directly to a task</p></div></div><div class="quick-actions"><button data-go="createSection">＋ Create Quiz</button><button data-go="quizSection">📚 Manage Quizzes</button><button data-go="resultsSection">📊 View Results</button><button data-go="leaderboardSection">🏆 Leaderboard</button></div></section></div>
+      <div class="dashboard-hero">
+        <div>
+          <span class="hero-kicker">CONTROL CENTER</span>
+          <h2>Welcome back, Administrator 👋</h2>
+          <p>Manage quizzes, import questions, review results and control students from one place.</p>
+        </div>
+        <div class="hero-actions">
+          <button class="hero-primary" data-go="createSection" data-focus-pdf="true">📄 PDF → Quiz</button>
+          <button class="hero-secondary" data-go="createSection">＋ Create Quiz</button>
+        </div>
+      </div>
+
+      <div class="stats-grid dashboard-stats">
+        <div class="stat-card stat-blue"><div class="stat-icon">📚</div><div><span>Total Quizzes</span><strong id="statQuizzes">0</strong><small>Created on platform</small></div></div>
+        <div class="stat-card stat-purple"><div class="stat-icon">👥</div><div><span>Total Attempts</span><strong id="statAttempts">0</strong><small>Student submissions</small></div></div>
+        <div class="stat-card stat-green"><div class="stat-icon">🎯</div><div><span>Average Score</span><strong id="statAverage">0%</strong><small>Across all attempts</small></div></div>
+        <div class="stat-card stat-red"><div class="stat-icon">🛡️</div><div><span>Violations</span><strong id="statViolations">0</strong><small>Exam-mode events</small></div></div>
+      </div>
+
+      <div class="dashboard-grid">
+        <section class="admin-card dashboard-recent">
+          <div class="section-header"><div><span class="card-eyebrow">ACTIVITY</span><h2>Recent Attempts</h2><p class="card-muted">Latest student submissions</p></div><button class="secondary-btn" data-go="resultsSection">View All →</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Student</th><th>Quiz</th><th>Score</th><th>Status</th><th>Date</th></tr></thead><tbody id="recentBody"></tbody></table></div>
+        </section>
+        <section class="admin-card quick-card">
+          <div class="section-header"><div><span class="card-eyebrow">SHORTCUTS</span><h2>Quick Actions</h2><p class="card-muted">Jump directly to a task</p></div></div>
+          <div class="quick-actions professional-actions">
+            <button class="action-tile action-import" data-go="createSection" data-focus-pdf="true"><span>📄</span><div><strong>PDF → Quiz</strong><small>Import questions automatically</small></div><b>→</b></button>
+            <button class="action-tile" data-go="createSection"><span>✏️</span><div><strong>Create Quiz</strong><small>Build a new quiz</small></div><b>→</b></button>
+            <button class="action-tile" data-go="quizSection"><span>📚</span><div><strong>Manage Quizzes</strong><small>Edit or publish quizzes</small></div><b>→</b></button>
+            <button class="action-tile" data-go="usersSection"><span>👥</span><div><strong>Manage Users</strong><small>Activate or remove students</small></div><b>→</b></button>
+            <button class="action-tile" data-go="resultsSection"><span>📊</span><div><strong>Results & Attempts</strong><small>Review submissions</small></div><b>→</b></button>
+            <button class="action-tile" data-go="leaderboardSection"><span>🏆</span><div><strong>Leaderboard</strong><small>See top performers</small></div><b>→</b></button>
+          </div>
+        </section>
+      </div>
     </section>
 
     <section id="quizSection" class="admin-section">
@@ -46,7 +92,13 @@
       <input type="hidden" id="quizId">
       <section class="admin-card"><h3>Quiz Settings</h3><div class="admin-grid"><div class="form-group"><label>Quiz Name</label><input id="quizTitle" type="text" placeholder="Example: Bihar GK Test"></div><div class="form-group"><label>Time Limit (minutes)</label><input id="quizTime" type="number" value="10" min="1" max="180"></div><div class="form-group"><label>Maximum Violations</label><input id="maxViolations" type="number" value="3" min="1" max="20"></div><div class="form-group"><label>Exam Mode</label><select id="examMode"><option value="on">ON</option><option value="off">OFF</option></select></div><div class="form-group"><label>Join Opens (optional)</label><input id="joinStartAt" type="datetime-local"></div><div class="form-group"><label>Join Closes (optional)</label><input id="joinEndAt" type="datetime-local"></div><div class="form-group"><label>Quiz Starts (optional)</label><input id="scheduledStartAt" type="datetime-local"></div></div><p class="card-muted">If you set a join window and start time, only students who join during the window can enter. After the start time, joining closes automatically and joined students can resume the same attempt after refresh.</p></section>
       <section class="admin-card"><div class="section-header"><div><h3 id="questionEditorHeading">Add Question</h3><p class="card-muted">Create or edit a question.</p></div></div>
-      <div class="bulk-import-box pdf-import-box"><div class="section-header"><div><h3>📄 Import Questions from PDF</h3><p class="card-muted">Upload a text-based PDF containing questions with A/B/C/D options. Hindi and maths symbols are kept as Unicode.</p></div></div><input id="pdfQuestionFile" type="file" accept="application/pdf"><div class="form-actions"><button id="parsePdfBtn" type="button">📄 Read PDF</button></div><p id="pdfMessage" class="admin-message"></p></div><div class="form-group"><label>Question</label><textarea id="questionInput" rows="3" placeholder="Enter your question..."></textarea></div>
+      <div id="pdfImportBox" class="bulk-import-box pdf-import-box">
+        <div class="section-header"><div><span class="card-eyebrow">FAST IMPORT</span><h3>📄 PDF → Quiz</h3><p class="card-muted">Upload the question PDF. The importer detects A/B/C/D options and can apply an answer key automatically.</p></div><span class="import-badge">AUTO</span></div>
+        <input id="pdfQuestionFile" type="file" accept="application/pdf">
+        <div class="form-group compact import-key-field"><label>Answer Key (optional)</label><input id="pdfAnswerKey" placeholder="Example: 1(b) 2(a) 3(b) 4(c) 5(c) ..."><small>Leave blank if the PDF contains a readable answer key. You can edit any detected answer later.</small></div>
+        <div class="form-actions"><button id="parsePdfBtn" type="button">⚡ Read PDF & Auto Answers</button></div>
+        <p id="pdfMessage" class="admin-message"></p>
+      </div><div class="form-group"><label>Question</label><textarea id="questionInput" rows="3" placeholder="Enter your question..."></textarea></div>
       <div class="bulk-import-box"><div class="section-header"><div><h3>📋 Bulk Paste Questions</h3><p class="card-muted">Paste multiple questions together. Then select the correct answer for each one.</p></div></div><textarea id="bulkQuestionsInput" rows="10" placeholder="1. What is the capital of Bihar?
 A. Gaya
 B. Patna

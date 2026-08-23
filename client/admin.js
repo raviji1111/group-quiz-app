@@ -303,13 +303,40 @@ const sectionMeta = {
   leaderboardSection: ['Leaderboard','Top performers by quiz or across the platform.'],
   usersSection: ['Users','Manage registered students and accounts.']
 };
-function openAdminSection(id){
+function openAdminSection(id, focusPdf = false){
   document.querySelectorAll('.admin-section').forEach(s=>s.classList.toggle('active-section',s.id===id));
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.section===id));
   const meta=sectionMeta[id]||['Dashboard','Overview of your quiz platform.'];
   $('pageTitle').textContent=meta[0]; $('pageSubtitle').textContent=meta[1];
+  if (id === 'createSection' && focusPdf) {
+    setTimeout(() => {
+      const box = $('pdfImportBox');
+      if (box) {
+        box.scrollIntoView({behavior:'smooth', block:'start'});
+        box.classList.add('import-focus');
+        setTimeout(() => box.classList.remove('import-focus'), 1800);
+      }
+    }, 80);
+  }
 }
-document.querySelectorAll('.nav-item,[data-go]').forEach(el=>el.addEventListener('click',()=>openAdminSection(el.dataset.section||el.dataset.go)));
+
+document.querySelectorAll('.nav-item,[data-go]').forEach(el=>el.addEventListener('click',()=>{
+  const id=el.dataset.section||el.dataset.go;
+  openAdminSection(id, el.dataset.focusPdf === 'true');
+  if (el.classList.contains('nav-item')) document.body.classList.remove('sidebar-open');
+}));
+
+// Professional auto-hide sidebar: move to the far-left edge to reveal it.
+// The hamburger remains available so the menu is always reachable.
+(function setupAdminSidebar(){
+  const toggle=$('sidebarToggle'), overlay=$('sidebarOverlay');
+  if(!toggle) return;
+  const open=()=>document.body.classList.add('sidebar-open');
+  const close=()=>document.body.classList.remove('sidebar-open');
+  toggle.addEventListener('click',()=>document.body.classList.toggle('sidebar-open'));
+  overlay?.addEventListener('click',close);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
+})();
 
 function renderQuestions() {
   $('questionCount').textContent = questions.length;
@@ -468,30 +495,44 @@ function cancelQuestionEdit(){editingQuestionIndex=-1;$('questionEditorHeading')
 $('cancelQuestionEditBtn').addEventListener('click',cancelQuestionEdit);
 
 // ===== BULK COPY/PASTE IMPORT =====
+function parseAnswerKeyText(text) {
+  const key = {};
+  const source = String(text || '');
+  const marker = source.match(/(?:answer\s*key|answers?|उत्तर\s*कुंजी|उत्तर)/i);
+  const region = marker ? source.slice(marker.index) : source;
+  const re = /(?:^|\s|[,;|])(?:Q\s*)?(\d{1,3})\s*[:.)-]?\s*\(?([ABCD])\)?/gi;
+  let m;
+  while ((m = re.exec(region))) key[Number(m[1])] = 'ABCD'.indexOf(m[2].toUpperCase());
+  return key;
+}
+
 function parseBulkQuestions(text) {
   const normalized = String(text || '').replace(/\r/g, '').trim();
   if (!normalized) return [];
+  const answerKey = parseAnswerKeyText(normalized);
   const blocks = normalized.split(/\n\s*\n+/).map(x => x.trim()).filter(Boolean);
   const parsed = [];
 
   for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
     const lines = blocks[blockIndex].split('\n').map(x => x.trim()).filter(Boolean);
     if (lines.length < 5) continue;
+    if (/^(answer\s*key|answers?|उत्तर\s*कुंजी)/i.test(lines[0])) continue;
 
-    // Question line may start with 1., 1), Q1, etc.
-    let question = lines[0].replace(/^\s*(?:Q(?:uestion)?\s*)?\d+\s*[.)-]\s*/i, '').trim();
-    if (!question) question = lines[0];
+    let numberMatch = lines[0].match(/^\s*(?:Q(?:uestion)?\s*)?(\d+)\s*[.)-]\s*(.+)$/i);
+    let question = numberMatch ? numberMatch[2].trim() : lines[0];
+    const questionNumber = numberMatch ? Number(numberMatch[1]) : blockIndex + 1;
 
     const options = [];
     for (const line of lines.slice(1)) {
-      const match = line.match(/^([A-Da-d])\s*[.)\-:]\s*(.+)$/);
-      if (match) options.push({ letter: match[1].toUpperCase(), text: match[2].trim() });
+      const match = line.match(/^(?:\[\s*([A-Da-d])\s*\]|([A-Da-d]))\s*[.)\-:]?\s*(.+)$/);
+      if (match) options.push({ letter: (match[1] || match[2]).toUpperCase(), text: match[3].trim() });
     }
     if (options.length !== 4) continue;
     const unique = new Set(options.map(x => x.letter));
     if (unique.size !== 4 || !question || options.some(x => !x.text)) continue;
 
-    parsed.push({ question, options: options.sort((a,b) => 'ABCD'.indexOf(a.letter) - 'ABCD'.indexOf(b.letter)).map(x => x.text), answer: 0 });
+    const sorted = options.sort((a,b) => 'ABCD'.indexOf(a.letter) - 'ABCD'.indexOf(b.letter));
+    parsed.push({ question, options: sorted.map(x => x.text), answer: Number.isInteger(answerKey[questionNumber]) ? answerKey[questionNumber] : 0 });
   }
   return parsed;
 }
@@ -499,7 +540,7 @@ function parseBulkQuestions(text) {
 function renderBulkPreview(items) {
   const msg = $('bulkMessage');
   if (!msg) return;
-  msg.textContent = items.length ? `${items.length} question${items.length === 1 ? '' : 's'} parsed. Correct answers default to A — change them in the question list/editor before saving.` : 'No valid questions found. Use one question followed by exactly A, B, C and D options, with a blank line between questions.';
+  msg.textContent = items.length ? `${items.length} question${items.length === 1 ? '' : 's'} parsed. Answer keys are applied when found; you can edit any answer before saving.` : 'No valid questions found. Use one question followed by A, B, C and D options.';
   msg.classList.toggle('error', !items.length);
 }
 
@@ -568,15 +609,33 @@ async function importQuestionsFromPdf() {
   const msg = $('pdfMessage');
   if (!file) { if (msg) { msg.textContent = 'Select a PDF first.'; msg.classList.add('error'); } return; }
   if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) { if (msg) { msg.textContent = 'Only PDF files are supported.'; msg.classList.add('error'); } return; }
-  const form = new FormData(); form.append('pdf', file);
+
+  const form = new FormData();
+  form.append('pdf', file);
+  const key = $('pdfAnswerKey')?.value.trim() || '';
+  if (key) form.append('answerKey', key);
+
+  const button = $('parsePdfBtn');
   try {
-    if (msg) { msg.classList.remove('error'); msg.textContent = 'Reading PDF…'; }
+    if (msg) { msg.classList.remove('error'); msg.textContent = 'Reading PDF and matching answers…'; }
+    if (button) { button.disabled=true; button.textContent='⏳ Reading…'; }
     const data = await api('/quizzes/import-pdf', { method: 'POST', body: form });
     questions.push(...(data.questions || []));
     renderQuestions();
-    if (msg) msg.textContent = `${data.count} questions imported from ${data.pages || 0} page(s). Correct answers default to A — edit them before saving.`;
+    const matched = Number(data.answerKeyMatched || 0);
+    const unmatched = Math.max(0, Number(data.count || 0) - matched);
+    if (msg) {
+      msg.textContent = matched
+        ? `✓ ${data.count} questions imported. ${matched} correct answers matched automatically${unmatched ? `; ${unmatched} still need review` : ''}.`
+        : `${data.count} questions imported. No answer key was detected, so answers are set to A until you edit them.`;
+    }
     $('pdfQuestionFile').value = '';
-  } catch (e) { if (msg) { msg.textContent = e.message; msg.classList.add('error'); } }
+    if ($('pdfAnswerKey')) $('pdfAnswerKey').value = '';
+  } catch (e) {
+    if (msg) { msg.textContent = e.message; msg.classList.add('error'); }
+  } finally {
+    if (button) { button.disabled=false; button.textContent='⚡ Read PDF & Auto Answers'; }
+  }
 }
 $('parsePdfBtn')?.addEventListener('click', importQuestionsFromPdf);
 

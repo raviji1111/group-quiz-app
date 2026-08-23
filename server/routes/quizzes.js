@@ -12,51 +12,119 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-function parsePdfQuestions(text) {
-  const lines = String(text || '').replace(/\r/g, '').split('\n').map(line => line.replace(/\u00a0/g, ' ').trim()).filter(Boolean);
+function parseAnswerKey(text) {
+  const source = String(text || '');
+  const marker = source.match(/(?:answer\s*key|answers?|उत्तर\s*कुंजी|उत्तर\s*तालिका)/i);
+  const region = marker ? source.slice(marker.index) : source;
+  const key = {};
+  const patterns = [
+    /(?:^|[\s,;|])(?:Q\s*)?(\d{1,3})\s*[\.\):\-]?\s*\(?([ABCD])\)?/gi,
+    /(?:^|[\s,;|])(\d{1,3})\s*[-:]\s*([ABCD])/gi
+  ];
+  for (const re of patterns) {
+    let m;
+    while ((m = re.exec(region))) {
+      const n = Number(m[1]);
+      if (n >= 1 && n <= 1000) key[n] = 'ABCD'.indexOf(m[2].toUpperCase());
+    }
+  }
+  return key;
+}
+
+function parsePdfQuestions(text, suppliedAnswerKey = '') {
+  const raw = String(text || '').replace(/\r/g, '').replace(/\u00a0/g, ' ');
+  const lines = raw.split('\n').map(line => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const answerKey = parseAnswerKey(suppliedAnswerKey || raw);
   const items = [];
   let current = null;
   let option = null;
-  const pushOptionText = value => {
-    if (!current || !option || !value) return;
-    current.options[option] = current.options[option] ? `${current.options[option]} ${value}` : value;
-  };
+
   const finish = () => {
     if (!current) return;
     const ok = current.question.trim() && current.options.every(Boolean);
-    if (ok) items.push({ question: current.question.trim(), options: current.options.map(x => x.trim()), answer: 0 });
-    current = null; option = null;
-  };
-  for (const line of lines) {
-    const qMatch = line.match(/^(?:Q(?:uestion)?\s*)?(\d+)\s*[.)\-:]\s*(.+)$/i);
-    const oMatch = line.match(/^([A-Da-d])\s*[.)\-:]\s*(.*)$/);
-    if (qMatch) {
-      finish(); current = { question: qMatch[2].trim(), options: ['', '', '', ''] }; option = null; continue;
+    if (ok) {
+      const answer = Number.isInteger(answerKey[current.number]) ? answerKey[current.number] : 0;
+      items.push({
+        question: current.question.trim(),
+        options: current.options.map(x => x.trim()),
+        answer
+      });
     }
-    if (oMatch) {
-      if (!current) continue;
-      option = 'ABCD'.indexOf(oMatch[1].toUpperCase());
-      if (option >= 0) current.options[option] = oMatch[2].trim();
+    current = null;
+    option = null;
+  };
+
+  for (const originalLine of lines) {
+    const line = originalLine.replace(/^\*+|\*+$/g, '').trim();
+
+    // Do not accidentally append the answer-key section to the last option.
+    if (/^(?:answer\s*key|answers?|उत्तर\s*कुंजी|उत्तर\s*तालिका)\b/i.test(line)) {
+      finish();
       continue;
     }
+
+    const qMatch = line.match(/^(?:Q(?:uestion)?\s*)?(\d{1,3})\s*[.)\-:]\s*(?:\*\*\d{1,3}\.?\*\*\s*)?(.+)$/i);
+    const oMatch = line.match(/^(?:\[\s*([A-Da-d])\s*\]|([A-Da-d]))\s*[.)\-:]?\s*(.*)$/);
+
+    if (qMatch) {
+      finish();
+      current = {
+        number: Number(qMatch[1]),
+        question: qMatch[2].trim(),
+        options: ['', '', '', '']
+      };
+      option = null;
+      continue;
+    }
+
+    if (oMatch) {
+      if (!current) continue;
+      option = 'ABCD'.indexOf((oMatch[1] || oMatch[2]).toUpperCase());
+      if (option >= 0) current.options[option] = oMatch[3].trim();
+      continue;
+    }
+
     if (current) {
-      if (option !== null) pushOptionText(line);
-      else current.question += ` ${line}`;
+      if (option !== null) current.options[option] = `${current.options[option]} ${line}`.trim();
+      else current.question = `${current.question} ${line}`.trim();
     }
   }
   finish();
-  return items.slice(0, 1000);
+
+  // Keep the answer-key matching count useful for the admin UI.
+  const answerKeyMatched = items.reduce((n, q) => {
+    const idx = items.indexOf(q) + 1;
+    return n + (Number.isInteger(answerKey[q.number]) ? 1 : 0);
+  }, 0);
+
+  return { items: items.slice(0, 1000), answerKeyMatched };
 }
 
 router.post('/import-pdf', requireAdmin, upload.single('pdf'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'Please select a PDF file.' });
     if (req.file.mimetype !== 'application/pdf' && !req.file.originalname.toLowerCase().endsWith('.pdf')) return res.status(400).json({ message: 'Only PDF files are supported.' });
+
     const parsed = await pdfParse(req.file.buffer);
-    const questions = parsePdfQuestions(parsed.text);
-    if (!questions.length) return res.status(422).json({ message: 'No A/B/C/D questions could be detected. Use a text-based PDF with questions like 1. Question, A. Option, B. Option, C. Option, D. Option.' });
-    res.json({ questions, count: questions.length, pages: parsed.numpages || 0 });
-  } catch (error) { console.error(error); res.status(400).json({ message: 'Could not read this PDF.' }); }
+    const result = parsePdfQuestions(parsed.text, req.body?.answerKey || '');
+    const questions = result.items;
+
+    if (!questions.length) {
+      return res.status(422).json({
+        message: 'No A/B/C/D questions could be detected. This PDF may be image-only, or its options are not in a readable A/B/C/D text format.'
+      });
+    }
+
+    res.json({
+      questions,
+      count: questions.length,
+      pages: parsed.numpages || 0,
+      answerKeyMatched: result.answerKeyMatched
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ message: 'Could not read this PDF.' });
+  }
 });
 
 

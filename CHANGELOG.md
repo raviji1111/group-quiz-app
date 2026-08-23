@@ -1,3 +1,14 @@
+# Changelog
+
+## V16
+- Professional admin dashboard with polished hero, statistics and shortcut tiles.
+- Sidebar is no longer permanently fixed open: it auto-hides and can be revealed from the left edge or with the menu button.
+- Added a prominent `PDF → Quiz` workflow on the dashboard.
+- PDF importer now accepts an optional answer-key string and automatically maps A/B/C/D answers.
+- PDF parser recognizes `[A]`, `A.`, `A)`, `A:` style options and stops correctly at answer-key sections.
+- Bulk paste importer can also apply answer keys when included in the pasted text.
+- Existing inline question editing and fraction rendering are preserved.
+
 ## v14 — PDF-style mixed-fraction rendering
 
 - Fixed math display in both the admin question list and the user quiz screen.

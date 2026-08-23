@@ -514,9 +514,12 @@ $('cancelQuestionEditBtn').addEventListener('click',cancelQuestionEdit);
 function parseAnswerKeyText(text) {
   const key = {};
   const source = String(text || '');
-  const marker = source.match(/(?:answer\s*key|answers?|उत्तर\s*कुंजी|उत्तर)/i);
-  const region = marker ? source.slice(marker.index) : source;
-  const re = /(?:^|\s|[,;|])(?:Q\s*)?(\d{1,3})\s*[:.)-]?\s*\(?([ABCD])\)?/gi;
+  // Only parse an answer key when an explicit key heading exists. This prevents
+  // normal question numbers/options from being mistaken for answer-key pairs.
+  const marker = source.match(/(?:answer\s*key|answers?|उत्तर\s*कुंजी|उत्तर\s*उत्तर)/i);
+  if (!marker) return key;
+  const region = source.slice(marker.index);
+  const re = /(?:^|\s|[,;|])(?:Q\s*)?(\d{1,3})\s*[:.)-]?\s*\(?([ABCD])\)?(?=\s|[,;|]|$)/gi;
   let m;
   while ((m = re.exec(region))) key[Number(m[1])] = 'ABCD'.indexOf(m[2].toUpperCase());
   return key;
@@ -525,30 +528,66 @@ function parseAnswerKeyText(text) {
 function parseBulkQuestions(text) {
   const normalized = String(text || '').replace(/\r/g, '').trim();
   if (!normalized) return [];
+
   const answerKey = parseAnswerKeyText(normalized);
-  const blocks = normalized.split(/\n\s*\n+/).map(x => x.trim()).filter(Boolean);
-  const parsed = [];
+  const lines = normalized.split('\n').map(x => x.trim()).filter(Boolean);
+  const blocks = [];
+  let current = [];
 
-  for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
-    const lines = blocks[blockIndex].split('\n').map(x => x.trim()).filter(Boolean);
-    if (lines.length < 5) continue;
-    if (/^(answer\s*key|answers?|उत्तर\s*कुंजी)/i.test(lines[0])) continue;
-
-    let numberMatch = lines[0].match(/^\s*(?:Q(?:uestion)?\s*)?(\d+)\s*[.)-]\s*(.+)$/i);
-    let question = numberMatch ? numberMatch[2].trim() : lines[0];
-    const questionNumber = numberMatch ? Number(numberMatch[1]) : blockIndex + 1;
-
-    const options = [];
-    for (const line of lines.slice(1)) {
-      const match = line.match(/^(?:\[\s*([A-Da-d])\s*\]|([A-Da-d]))\s*[.)\-:]?\s*(.+)$/);
-      if (match) options.push({ letter: (match[1] || match[2]).toUpperCase(), text: match[3].trim() });
+  // IMPORTANT: Do not depend on blank lines between questions. Questions pasted
+  // from PDF/OCR often have inconsistent spacing. A new numbered question starts
+  // a new block even when there is no empty line before it.
+  for (const line of lines) {
+    const qStart = line.match(/^(?:Q(?:uestion)?\s*)?(\d+)\s*[.)-]\s+(.+)$/i);
+    if (qStart) {
+      if (current.length) blocks.push(current);
+      current = [line];
+    } else if (current.length) {
+      current.push(line);
     }
+  }
+  if (current.length) blocks.push(current);
+
+  const parsed = [];
+  for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
+    const block = blocks[blockIndex];
+    if (!block.length) continue;
+    if (/^(answer\s*key|answers?|उत्तर\s*कुंजी)/i.test(block[0])) continue;
+
+    const numberMatch = block[0].match(/^\s*(?:Q(?:uestion)?\s*)?(\d+)\s*[.)-]\s+(.+)$/i);
+    const questionNumber = numberMatch ? Number(numberMatch[1]) : blockIndex + 1;
+    const questionParts = [];
+    const options = [];
+    let seenOption = false;
+
+    for (const line of block) {
+      const qMatch = line.match(/^\s*(?:Q(?:uestion)?\s*)?(\d+)\s*[.)-]\s+(.+)$/i);
+      if (qMatch && questionParts.length === 0) {
+        questionParts.push(qMatch[2].trim());
+        continue;
+      }
+
+      const match = line.match(/^\s*(?:\[\s*([A-Da-d])\s*\]|([A-Da-d]))\s*[.)\-:]?\s+(.+)$/);
+      if (match) {
+        seenOption = true;
+        options.push({ letter: (match[1] || match[2]).toUpperCase(), text: match[3].trim() });
+      } else if (!seenOption) {
+        // Allow a question to wrap onto multiple lines before option A.
+        questionParts.push(line);
+      }
+    }
+
+    const question = questionParts.join(' ').replace(/\s+/g, ' ').trim();
     if (options.length !== 4) continue;
     const unique = new Set(options.map(x => x.letter));
     if (unique.size !== 4 || !question || options.some(x => !x.text)) continue;
 
-    const sorted = options.sort((a,b) => 'ABCD'.indexOf(a.letter) - 'ABCD'.indexOf(b.letter));
-    parsed.push({ question, options: sorted.map(x => x.text), answer: Number.isInteger(answerKey[questionNumber]) ? answerKey[questionNumber] : 0 });
+    const sorted = options.sort((a, b) => 'ABCD'.indexOf(a.letter) - 'ABCD'.indexOf(b.letter));
+    parsed.push({
+      question,
+      options: sorted.map(x => x.text),
+      answer: Number.isInteger(answerKey[questionNumber]) ? answerKey[questionNumber] : 0
+    });
   }
   return parsed;
 }

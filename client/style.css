@@ -733,3 +733,34 @@ td { color: #e2e8f0; font-size: 14px; }
 .bulk-import-box textarea{width:100%;min-height:180px;resize:vertical;font-family:inherit;line-height:1.5}
 
 .pdf-import-box input[type=file]{width:100%;padding:12px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#e2e8f0;margin:10px 0}.pdf-import-box{margin-bottom:18px}.users-section{}
+
+/* Inline question editing: edit and save any question without returning to the top. */
+.question-inline-editing { border-color: #2563eb; box-shadow: 0 8px 24px rgba(37,99,235,.12); }
+.inline-edit-heading { font-weight: 800; margin-bottom: 12px; color: #f8fafc; }
+.inline-question-input,
+.inline-option-field input,
+.inline-correct-field select {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    background: #0b1524;
+    color: #f8fafc;
+    padding: 10px 12px;
+    font: inherit;
+}
+.inline-question-input:focus,
+.inline-option-field input:focus,
+.inline-correct-field select:focus { outline: none; border-color: #2563eb; }
+.inline-options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.inline-option-field,
+.inline-correct-field { display: grid; gap: 6px; color: #94a3b8; font-size: 12px; font-weight: 700; }
+.inline-edit-footer { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-top: 14px; }
+.inline-correct-field { width: 170px; }
+.inline-save-btn { background: #16a34a; }
+.inline-save-btn:hover { background: #15803d; }
+@media (max-width: 700px) {
+    .inline-options-grid { grid-template-columns: 1fr; }
+    .inline-edit-footer { align-items: stretch; flex-direction: column; }
+    .inline-correct-field { width: 100%; }
+}

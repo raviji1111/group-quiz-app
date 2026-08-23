@@ -272,17 +272,151 @@ document.querySelectorAll('.nav-item,[data-go]').forEach(el=>el.addEventListener
 function renderQuestions() {
   $('questionCount').textContent = questions.length;
   $('questionList').innerHTML = questions.length ? '' : '<div class="empty-state">No questions added yet.</div>';
-  questions.forEach((q,index)=>{
-    const item=document.createElement('div'); item.className='question-item';
-    const title=document.createElement('h3'); title.textContent=`${index+1}. ${q.question}`; item.appendChild(title);
-    const options=document.createElement('div'); options.className='question-options';
-    q.options.forEach((opt,oi)=>{const el=document.createElement('div');el.className='question-option'+(oi===q.answer?' correct-option':'');el.textContent=`${String.fromCharCode(65+oi)}. ${opt}`;options.appendChild(el);}); item.appendChild(options);
-    const actions=document.createElement('div');actions.className='question-actions';
-    const edit=document.createElement('button');edit.className='small-btn';edit.textContent='✏ Edit';edit.onclick=()=>startQuestionEdit(index);
-    const del=document.createElement('button');del.className='small-btn delete-btn';del.textContent='Delete';del.onclick=()=>{if(confirm('Delete this question?')){questions.splice(index,1);if(editingQuestionIndex===index)cancelQuestionEdit();renderQuestions();}};
-    actions.append(edit,del);item.appendChild(actions);$('questionList').appendChild(item);
+  questions.forEach((q, index) => {
+    const item = document.createElement('div');
+    item.className = 'question-item';
+    item.dataset.questionIndex = index;
+
+    const title = document.createElement('h3');
+    title.textContent = `${index + 1}. ${q.question}`;
+    item.appendChild(title);
+
+    const options = document.createElement('div');
+    options.className = 'question-options';
+    q.options.forEach((opt, oi) => {
+      const el = document.createElement('div');
+      el.className = 'question-option' + (oi === q.answer ? ' correct-option' : '');
+      el.textContent = `${String.fromCharCode(65 + oi)}. ${opt}`;
+      options.appendChild(el);
+    });
+    item.appendChild(options);
+
+    const actions = document.createElement('div');
+    actions.className = 'question-actions';
+    const edit = document.createElement('button');
+    edit.className = 'small-btn';
+    edit.textContent = '✏ Edit Here';
+    edit.onclick = () => startInlineQuestionEdit(index);
+    const del = document.createElement('button');
+    del.className = 'small-btn delete-btn';
+    del.textContent = 'Delete';
+    del.onclick = () => {
+      if (confirm('Delete this question?')) {
+        questions.splice(index, 1);
+        if (editingQuestionIndex === index) cancelQuestionEdit();
+        renderQuestions();
+      }
+    };
+    actions.append(edit, del);
+    item.appendChild(actions);
+    $('questionList').appendChild(item);
   });
 }
+
+function startInlineQuestionEdit(index) {
+  const q = questions[index];
+  const item = document.querySelector(`.question-item[data-question-index="${index}"]`);
+  if (!q || !item) return;
+
+  item.classList.add('question-inline-editing');
+  item.innerHTML = '';
+
+  const heading = document.createElement('div');
+  heading.className = 'inline-edit-heading';
+  heading.textContent = `Edit Question ${index + 1}`;
+  item.appendChild(heading);
+
+  const question = document.createElement('textarea');
+  question.className = 'inline-question-input';
+  question.rows = 3;
+  question.value = q.question;
+  question.placeholder = 'Question';
+  item.appendChild(question);
+
+  const grid = document.createElement('div');
+  grid.className = 'inline-options-grid';
+  const optionInputs = [];
+  q.options.forEach((opt, oi) => {
+    const wrap = document.createElement('label');
+    wrap.className = 'inline-option-field';
+    const label = document.createElement('span');
+    label.textContent = `Option ${String.fromCharCode(65 + oi)}`;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = opt;
+    input.placeholder = `Option ${String.fromCharCode(65 + oi)}`;
+    wrap.append(label, input);
+    grid.appendChild(wrap);
+    optionInputs.push(input);
+  });
+  item.appendChild(grid);
+
+  const bottom = document.createElement('div');
+  bottom.className = 'inline-edit-footer';
+  const correctWrap = document.createElement('label');
+  correctWrap.className = 'inline-correct-field';
+  correctWrap.innerHTML = '<span>Correct Answer</span>';
+  const correct = document.createElement('select');
+  ['A', 'B', 'C', 'D'].forEach((letter, oi) => {
+    const opt = document.createElement('option');
+    opt.value = String(oi);
+    opt.textContent = letter;
+    correct.appendChild(opt);
+  });
+  correct.value = String(q.answer);
+  correctWrap.appendChild(correct);
+
+  const buttons = document.createElement('div');
+  buttons.className = 'question-actions';
+  const save = document.createElement('button');
+  save.className = 'small-btn inline-save-btn';
+  save.textContent = $('quizId').value ? '✓ Update & Save Here' : '✓ Update Here';
+  const cancel = document.createElement('button');
+  cancel.className = 'small-btn secondary-btn';
+  cancel.textContent = 'Cancel';
+  cancel.onclick = () => renderQuestions();
+  buttons.append(save, cancel);
+  bottom.append(correctWrap, buttons);
+  item.appendChild(bottom);
+
+  save.onclick = async () => {
+    const updated = {
+      question: question.value.trim(),
+      options: optionInputs.map(input => input.value.trim()),
+      answer: Number(correct.value)
+    };
+    if (!updated.question) return showMessage('Please enter the question.', true);
+    if (updated.options.some(x => !x)) return showMessage('Please fill all four options.', true);
+
+    save.disabled = true;
+    save.textContent = 'Saving...';
+    try {
+      if ($('quizId').value) {
+        const result = await api(`/quizzes/${$('quizId').value}/questions/${index}`, {
+          method: 'PATCH',
+          body: JSON.stringify(updated)
+        });
+        questions[index] = {
+          question: result.question.question,
+          options: [...result.question.options],
+          answer: result.question.answer
+        };
+        showMessage(`Question ${index + 1} updated successfully.`);
+      } else {
+        questions[index] = updated;
+        showMessage(`Question ${index + 1} updated. Save the quiz to publish it.`);
+      }
+      renderQuestions();
+    } catch (e) {
+      save.disabled = false;
+      save.textContent = $('quizId').value ? '✓ Update & Save Here' : '✓ Update Here';
+      showMessage(e.message, true);
+    }
+  };
+
+  question.focus();
+}
+
 function startQuestionEdit(index){
   const q=questions[index]; editingQuestionIndex=index; $('questionEditorHeading').textContent=`Edit Question ${index+1}`;
   $('questionInput').value=q.question; ['A','B','C','D'].forEach((l,i)=>$(`option${l}`).value=q.options[i]||''); $('correctAnswer').value=String(q.answer);

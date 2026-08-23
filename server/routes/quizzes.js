@@ -144,6 +144,31 @@ router.post('/', requireAdmin, async (req, res) => {
   }
 });
 
+router.patch('/:id/questions/:index', requireAdmin, async (req, res) => {
+  try {
+    const index = Number(req.params.index);
+    if (!Number.isInteger(index) || index < 0) return res.status(400).json({ message: 'Invalid question number.' });
+
+    const question = String(req.body.question || '').trim();
+    const options = Array.isArray(req.body.options) ? req.body.options.map(x => String(x || '').trim()) : [];
+    const answer = Number(req.body.answer);
+    if (!question || options.length !== 4 || options.some(x => !x) || !Number.isInteger(answer) || answer < 0 || answer > 3) {
+      return res.status(400).json({ message: 'Invalid question data.' });
+    }
+
+    const quiz = await Quiz.findById(req.params.id);
+    if (!quiz) return res.status(404).json({ message: 'Quiz not found.' });
+    if (index >= quiz.questions.length) return res.status(404).json({ message: 'Question not found.' });
+
+    quiz.questions[index] = { question, options, answer };
+    await quiz.save();
+    res.json({ question: quiz.questions[index] });
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ message: error.message || 'Could not update question.' });
+  }
+});
+
 router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const data = normalizeQuiz(req.body, req.admin.id);

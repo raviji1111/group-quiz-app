@@ -1,11 +1,9 @@
+## V20.3 — compact bilingual question rendering
+- Normalize PDF line-wraps into spaces before rendering quiz text.
+- Keep only the English → Hindi language break.
+- Prevent Hindi/English words from being forced onto separate lines.
+- Reduce question typography responsively so options remain visible.
 
-## v20.3 — Quiz UX + Live Session Fix
-- Reduced quiz question typography and spacing so options remain visible on laptop and mobile.
-- Removed the duplicate global “Start Selected Quiz” launch control; quiz cards now launch directly.
-- Added responsive quiz layout for phone/tablet/desktop.
-- Added live in-quiz leaderboard with rank, player, score, answered count and elapsed time.
-- Normal/published quizzes can be attempted repeatedly; live quizzes remain one-attempt-per-player.
-- Fixed missing live-board client function that could break live-session UI.
 # Changelog
 
 ## V16

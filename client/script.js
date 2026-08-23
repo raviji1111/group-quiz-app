@@ -60,11 +60,13 @@ function formatMathText(value) {
   text = text.replace(/(?<![\d/>])\b(\d+)\s*\/\s*(\d+)\b/g,
     '<span class="mixed-fraction standalone-fraction"><span class="fraction-top">$1</span><span class="fraction-bottom">$2</span></span>');
 
-  // Keep bilingual questions in two clean lines. Many PDF extractors return
-  // English + Hindi on one line (e.g. "...is? किसी..."). Split only at the
-  // English-to-Devanagari boundary so spaces inside the Hindi sentence remain intact.
-  text = text.replace(/([A-Za-z0-9%\)\]\?\!\.:;])\s+(?=[\u0900-\u097F])/g, '$1<br class="bilingual-break">');
-  text = text.replace(/\r?\n/g, '<br class="bilingual-break">');
+  // Normalize PDF text line-wraps before rendering. PDF extraction often
+  // inserts a newline after every visual line, which made Hindi questions
+  // appear as one short line per extracted line. Treat those wraps as normal
+  // spaces, then create only the intentional English -> Hindi language break.
+  text = text.replace(/\r?\n+/g, ' ');
+  text = text.replace(/[ \t]{2,}/g, ' ').trim();
+  text = text.replace(/([A-Za-z0-9%\)\]\?!\.:;])\s+(?=[\u0900-\u097F])/g, '$1<br class="bilingual-break">');
 
   return text;
 }
@@ -112,7 +114,7 @@ async function api(path, options = {}) {
   if (!res.ok) throw new Error(data.message || 'Request failed.');
   return data;
 }
-function playerMessage(msg, error = false) { const el=$('playerMessage'); if(el){el.textContent=msg; el.classList.toggle('error', error);} }
+function playerMessage(msg, error = false) { $('playerMessage').textContent = msg; $('playerMessage').classList.toggle('error', error); }
 
 function setAuthView() {
   const gate = $('authGate');
@@ -281,7 +283,7 @@ function renderQuizCards(quizzes, title = 'All Quizzes') {
       card.querySelector('.subject-pill').textContent = q.subject || 'General';
       card.querySelector('h3').textContent = q.title;
       card.querySelector('.catalog-topic').textContent = `Topic: ${q.topic || 'General'}`;
-      card.querySelector('button').onclick = () => { quizSelect.value = q._id; startQuiz(true); };
+      card.querySelector('button').onclick = () => { quizSelect.value = q._id; startQuiz(); };
       grid.appendChild(card);
     });
     if (!items.length) grid.innerHTML = '<div class="empty-state">No quizzes in this topic yet.</div>';
@@ -311,52 +313,26 @@ function renderLiveCards(quizzes) {
     const card = document.createElement('article'); card.className = 'live-player-card';
     card.innerHTML = `<div class="live-player-top"><span>🔴 LIVE NOW</span><strong></strong></div><p></p><h3></h3><div class="live-player-meta"><span>${q.questions.length} Questions</span><span>${q.time} Minutes</span></div><button>Join Live Quiz →</button>`;
     card.querySelector('strong').textContent = q.subject || 'General'; card.querySelector('p').textContent = `Topic: ${q.topic || 'General'}`; card.querySelector('h3').textContent = q.title;
-    card.querySelector('button').onclick = () => { quizSelect.value = q._id; startQuiz(true); };
+    card.querySelector('button').onclick = () => { quizSelect.value = q._id; startQuiz(); };
     wrap.appendChild(card);
   });
 }
 
-async function startQuiz(forceSelected = false) {
+async function startQuiz() {
   if (!loggedPlayer || !playerToken) { accountPanel.classList.remove('hidden'); return playerMessage('Please register or login before attempting a quiz.', true); }
   playerName = loggedPlayer.name;
   const quizId = quizSelect.value;
   if (!playerName) return playerMessage('Please enter your name.', true);
-  if (!quizId) return playerMessage('Please select a quiz from the quiz card.', true);
+  if (!quizId) return playerMessage('Please select a quiz.', true);
   try {
     startBtn.disabled = true;
     const data = await api(`/quizzes/${quizId}/public`);
     quiz = data.quiz;
-    const isLive = quiz.liveStatus === 'live';
-    const session = await api('/attempts/start', { method: 'POST', body: JSON.stringify({ quizId, playerName, live: isLive }) });
+    const session = await api('/attempts/start', { method: 'POST', body: JSON.stringify({ quizId, playerName }) });
     playerName = session.playerName || playerName;
     localStorage.setItem(SESSION_STORAGE_KEY, String(session.sessionId));
     await setupSession(session, quiz);
   } catch (e) { playerMessage(e.message, true); } finally { startBtn.disabled = false; }
-}
-
-async function showLiveBoard() {
-  const strip = $('liveScoreStrip');
-  if (!strip || !quiz || quiz.liveStatus !== 'live' || !quiz._id) { if (strip) strip.classList.add('hidden'); return; }
-  try {
-    const data = await api(`/live/${encodeURIComponent(quiz._id)}/board`);
-    if (!data.quiz?.showLeaderboard && !data.quiz?.showLiveScore) { strip.classList.add('hidden'); return; }
-    const me = data.me;
-    const rows = Array.isArray(data.leaderboard) ? data.leaderboard : [];
-    let html = '<div class="live-board-title">🏆 Live Leaderboard</div>';
-    if (me && data.quiz.showLiveScore) html += `<div class="live-board-me">You: ${me.score}/${me.total} · ${me.answered} answered</div>`;
-    if (data.quiz.showLeaderboard) {
-      html += '<div class="live-board-table"><div class="live-board-row live-board-head"><span>#</span><span>Player</span><span>Score</span><span>Done</span><span>Time</span></div>';
-      rows.slice(0, 10).forEach(r => {
-        const sec = Math.max(0, Math.round((Date.now() - new Date(r.joinedAt).getTime()) / 1000));
-        const mm = Math.floor(sec / 60), ss = sec % 60;
-        const mine = loggedPlayer && r.playerName === loggedPlayer.name ? ' me' : '';
-        html += `<div class="live-board-row${mine}"><span>${r.rank}</span><span class="live-board-name">${escapeHtml(r.playerName)}</span><span>${r.score}/${r.total}</span><span>${r.answered}</span><span>${mm}:${String(ss).padStart(2,'0')}</span></div>`;
-      });
-      html += '</div>';
-    }
-    if (!rows.length) html += '<div>No participants yet.</div>';
-    strip.innerHTML = html; strip.classList.remove('hidden');
-  } catch (e) { strip.classList.add('hidden'); }
 }
 
 async function setupSession(session, quizData) {
@@ -417,7 +393,7 @@ async function resumeStoredSession() {
   }
 }
 
-startBtn?.addEventListener('click', () => startQuiz());
+startBtn.addEventListener('click', startQuiz);
 playerNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') startQuiz(); });
 
 function loadQuestion() {

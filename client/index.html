@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Group Quiz</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <section id="startScreen" class="screen active">
+    <div class="card">
+      <h1>Group Quiz</h1>
+      <p class="subtitle">Choose a quiz and test your knowledge.</p>
+      <select id="quizSelect" class="player-select"><option value="">Loading quizzes...</option></select>
+      <div class="account-bar"><span id="accountStatus">Guest mode</span><button id="accountBtn" class="small-btn secondary-btn">Login / Register</button></div>
+      <input id="playerName" type="text" placeholder="Enter your name" maxlength="30" autocomplete="off">
+      <button id="startBtn">Start Quiz</button>
+      <p id="playerMessage" class="admin-message"></p>
+      <div id="accountPanel" class="account-panel hidden">
+        <input id="accountName" type="text" placeholder="Name (for registration)" maxlength="30">
+        <input id="accountEmail" type="email" placeholder="Email">
+        <input id="accountPassword" type="password" placeholder="Password (6+ characters)">
+        <div class="account-actions"><button id="registerBtn">Register</button><button id="loginAccountBtn" class="secondary-btn">Login</button><button id="guestBtn" class="secondary-btn">Continue as Guest</button></div>
+        <p id="accountMessage" class="admin-message"></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="quizScreen" class="screen">
+    <div class="quiz-container">
+      <div class="quiz-top"><div>Question <span id="questionNumber">1</span> / <span id="totalQuestions">0</span></div><div id="timer">00:00</div></div>
+      <div class="progress-container"><div id="progressBar"></div></div>
+      <div class="question-box"><h2 id="questionText">Question</h2></div>
+      <div id="optionsContainer" class="options"></div>
+      <button id="nextBtn" class="next-btn" disabled>Next</button>
+      <div id="violationBox" class="violation-box">Warnings: <span id="violationCount">0</span> / <span id="maxViolations">3</span></div>
+    </div>
+  </section>
+
+  <section id="resultScreen" class="screen">
+    <div class="card result-card">
+      <h1>Quiz Completed</h1>
+      <p id="resultPlayer">Player</p>
+      <div class="score"><span id="score">0</span> / <span id="resultTotal">0</span></div>
+      <p id="resultMessage">Good job!</p>
+      <button id="restartBtn">Try Again</button>
+    </div>
+  </section>
+
+  <div id="warningModal" class="modal"><div class="modal-box"><h2>⚠️ Warning</h2><p id="warningMessage">Please stay in the quiz window.</p><button id="warningOkBtn">Continue Quiz</button></div></div>
+  <audio id="warningSound" preload="auto"><source src="warning.mp3" type="audio/mpeg"></audio>
+  <script src="script.js"></script>
+</body>
+</html>

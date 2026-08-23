@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Group Quiz — Admin Dashboard</title><link rel="stylesheet" href="style.css">
+</head>
+<body>
+<section id="loginView" class="admin-login-page">
+  <div class="admin-login card"><div class="brand-mark">GQ</div><h1>Admin Login</h1><p class="subtitle">Sign in to manage quizzes, students and results.</p>
+    <input id="loginEmail" type="email" placeholder="Admin email" autocomplete="username">
+    <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
+    <button id="loginBtn">Login</button><p id="loginMessage" class="admin-message"></p>
+  </div>
+</section>
+
+<section id="dashboardView" class="hidden admin-shell">
+  <aside class="admin-sidebar">
+    <div class="brand"><div class="brand-mark">GQ</div><div><strong>Group Quiz</strong><small>Admin Panel</small></div></div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-section="dashboardSection">🏠 <span>Dashboard</span></button>
+      <button class="nav-item" data-section="quizSection">📚 <span>Manage Quizzes</span></button>
+      <button class="nav-item" data-section="createSection">📝 <span>Create Quiz</span></button>
+      <button class="nav-item" data-section="resultsSection">📊 <span>Results & Attempts</span></button>
+      <button class="nav-item" data-section="leaderboardSection">🏆 <span>Leaderboard</span></button>
+      <button class="nav-item" data-section="usersSection">👥 <span>Users</span></button>
+    </nav>
+    <div class="sidebar-bottom"><a href="index.html" class="sidebar-link">▶ Open Quiz</a><button id="logoutBtn" class="logout-link">↪ Logout</button></div>
+  </aside>
+
+  <main class="admin-main">
+    <header class="topbar"><div><h1 id="pageTitle">Dashboard</h1><p id="pageSubtitle">Overview of your quiz platform.</p></div><div class="admin-profile"><span>●</span><div><strong>Administrator</strong><small>Online</small></div></div></header>
+
+    <section id="dashboardSection" class="admin-section active-section">
+      <div class="stats-grid"><div class="stat-card"><span>Total Quizzes</span><strong id="statQuizzes">0</strong></div><div class="stat-card"><span>Total Attempts</span><strong id="statAttempts">0</strong></div><div class="stat-card"><span>Average Score</span><strong id="statAverage">0%</strong></div><div class="stat-card"><span>Violations</span><strong id="statViolations">0</strong></div></div>
+      <div class="dashboard-grid"><section class="admin-card"><div class="section-header"><div><h2>Recent Attempts</h2><p class="card-muted">Latest student submissions</p></div><button class="secondary-btn" data-go="resultsSection">View All</button></div><div class="table-wrap"><table><thead><tr><th>Student</th><th>Quiz</th><th>Score</th><th>Status</th><th>Date</th></tr></thead><tbody id="recentBody"></tbody></table></div></section>
+      <section class="admin-card"><div class="section-header"><div><h2>Quick Actions</h2><p class="card-muted">Jump directly to a task</p></div></div><div class="quick-actions"><button data-go="createSection">＋ Create Quiz</button><button data-go="quizSection">📚 Manage Quizzes</button><button data-go="resultsSection">📊 View Results</button><button data-go="leaderboardSection">🏆 Leaderboard</button></div></section></div>
+    </section>
+
+    <section id="quizSection" class="admin-section">
+      <div class="section-heading"><div><h2>Manage Quizzes</h2><p>Create, edit, publish or remove quizzes.</p></div><button id="newQuizBtn">＋ New Quiz</button></div>
+      <div id="quizList" class="quiz-admin-list"></div>
+    </section>
+
+    <section id="createSection" class="admin-section">
+      <div class="section-heading"><div><h2 id="editorTitle">Create Quiz</h2><p>Build your quiz and manage its questions.</p></div><button class="secondary-btn" data-go="quizSection">← Back to Quizzes</button></div>
+      <input type="hidden" id="quizId">
+      <section class="admin-card"><h3>Quiz Settings</h3><div class="admin-grid"><div class="form-group"><label>Quiz Name</label><input id="quizTitle" type="text" placeholder="Example: Bihar GK Test"></div><div class="form-group"><label>Time Limit (minutes)</label><input id="quizTime" type="number" value="10" min="1" max="180"></div><div class="form-group"><label>Maximum Violations</label><input id="maxViolations" type="number" value="3" min="1" max="20"></div><div class="form-group"><label>Exam Mode</label><select id="examMode"><option value="on">ON</option><option value="off">OFF</option></select></div><div class="form-group"><label>Join Opens (optional)</label><input id="joinStartAt" type="datetime-local"></div><div class="form-group"><label>Join Closes (optional)</label><input id="joinEndAt" type="datetime-local"></div><div class="form-group"><label>Quiz Starts (optional)</label><input id="scheduledStartAt" type="datetime-local"></div></div><p class="card-muted">If you set a join window and start time, only students who join during the window can enter. After the start time, joining closes automatically and joined students can resume the same attempt after refresh.</p></section>
+      <section class="admin-card"><div class="section-header"><div><h3 id="questionEditorHeading">Add Question</h3><p class="card-muted">Create or edit a question.</p></div></div>
+      <div class="bulk-import-box pdf-import-box"><div class="section-header"><div><h3>📄 Import Questions from PDF</h3><p class="card-muted">Upload a text-based PDF containing questions with A/B/C/D options. Hindi and maths symbols are kept as Unicode.</p></div></div><input id="pdfQuestionFile" type="file" accept="application/pdf"><div class="form-actions"><button id="parsePdfBtn" type="button">📄 Read PDF</button></div><p id="pdfMessage" class="admin-message"></p></div><div class="form-group"><label>Question</label><textarea id="questionInput" rows="3" placeholder="Enter your question..."></textarea></div>
+      <div class="bulk-import-box"><div class="section-header"><div><h3>📋 Bulk Paste Questions</h3><p class="card-muted">Paste multiple questions together. Then select the correct answer for each one.</p></div></div><textarea id="bulkQuestionsInput" rows="10" placeholder="1. What is the capital of Bihar?
+A. Gaya
+B. Patna
+C. Ranchi
+D. Delhi
+
+2. ...
+A. ...
+B. ...
+C. ...
+D. ..."></textarea><div class="form-actions"><button id="parseBulkBtn" type="button">＋ Parse & Add Questions</button><button id="clearBulkBtn" type="button" class="secondary-btn">Clear</button></div><p id="bulkMessage" class="admin-message"></p></div><div class="admin-grid"><div class="form-group"><label>Option A</label><input id="optionA"></div><div class="form-group"><label>Option B</label><input id="optionB"></div><div class="form-group"><label>Option C</label><input id="optionC"></div><div class="form-group"><label>Option D</label><input id="optionD"></div></div><div class="form-actions"><div class="form-group compact"><label>Correct Answer</label><select id="correctAnswer"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select></div><button id="addQuestionBtn">＋ Add Question</button><button id="cancelQuestionEditBtn" class="secondary-btn hidden">Cancel Edit</button></div></section>
+      <section class="admin-card"><div class="section-header"><h3>Questions <span id="questionCount" class="count-badge">0</span></h3><button id="clearQuestionsBtn" class="danger-btn">Clear All</button></div><div id="questionList"></div></section>
+      <section class="save-bar"><p id="adminMessage" class="admin-message"></p><button id="previewQuizBtn" class="secondary-btn">Preview</button><button id="saveQuizBtn">Save Quiz</button></section>
+    </section>
+
+    <section id="resultsSection" class="admin-section">
+      <div class="section-heading"><div><h2>Results & Attempts</h2><p>Completed quizzes and every student attempt.</p></div><button id="refreshResultsBtn" class="secondary-btn">↻ Refresh</button></div>
+      <section class="admin-card"><div class="section-header"><div><h3>Completed Quizzes</h3><p class="card-muted">Each attempted quiz is listed separately.</p></div></div><div id="completedQuizList" class="quiz-admin-list"></div></section>
+      <section class="admin-card"><div class="section-header"><div><h3 id="historyTitle">Quiz Attempts</h3></div><button id="refreshHistoryBtn" class="secondary-btn">↻ Refresh</button></div><div class="filter-row"><label>Quiz</label><select id="attemptQuizFilter"><option value="">All quizzes</option></select></div><div class="table-wrap"><table><thead><tr><th>Student</th><th>Quiz</th><th>Score</th><th>Violations</th><th>Status</th><th>Date</th><th></th></tr></thead><tbody id="historyBody"></tbody></table></div></section>
+    </section>
+
+    <section id="usersSection" class="admin-section">
+      <div class="section-heading"><div><h2>Users / Students</h2><p>Manage registered student accounts.</p></div><button id="refreshUsersBtn" class="secondary-btn">↻ Refresh</button></div>
+      <section class="admin-card"><div class="filter-row"><label>Search</label><input id="userSearchInput" type="search" placeholder="Name or email"></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Attempts</th><th>Best</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="usersBody"></tbody></table></div></section>
+    </section>
+
+    <section id="leaderboardSection" class="admin-section"><div class="section-heading"><div><h2>Leaderboard</h2><p>Top performers by quiz or across the platform.</p></div><button id="refreshLeaderboardBtn" class="secondary-btn">↻ Refresh</button></div><section class="admin-card"><div class="filter-row"><label>Quiz</label><select id="leaderboardQuizFilter"><option value="">All quizzes</option></select></div><div class="table-wrap"><table><thead><tr><th>Rank</th><th>Student</th><th>Attempts</th><th>Best</th><th>Average</th></tr></thead><tbody id="leaderboardBody"></tbody></table></div></section></section>
+  </main>
+</section>
+
+<div id="attemptModal" class="modal hidden"><div class="modal-card"><div class="section-header"><div><h2>Attempt Details</h2><p id="attemptMeta" class="card-muted"></p></div><button id="closeAttemptModal" class="secondary-btn">✕</button></div><div id="attemptDetailBody"></div></div></div>
+<script src="admin.js"></script>
+</body></html>

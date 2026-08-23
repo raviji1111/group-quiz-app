@@ -5,6 +5,16 @@ let quizzes = [];
 
 const $ = id => document.getElementById(id);
 
+
+// Render LaTeX/math notation in admin previews without changing the editable source text.
+function typesetMath(root = document) {
+  if (!root) return;
+  if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+    window.MathJax.typesetClear?.([root]);
+    window.MathJax.typesetPromise([root]).catch(() => {});
+  }
+}
+
 function headers() {
   return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
@@ -310,6 +320,7 @@ function renderQuestions() {
     actions.append(edit, del);
     item.appendChild(actions);
     $('questionList').appendChild(item);
+    typesetMath(item);
   });
 }
 
@@ -571,11 +582,36 @@ async function deleteUser(p) {
     await loadUsers(); await loadStatsAndHistory();
   } catch (e) { showMessage(e.message, true); }
 }
+async function loadLegacyUsers() {
+  try {
+    const data = await api('/players/legacy');
+    const body = $('legacyUsersBody');
+    if (!body) return;
+    body.innerHTML = '';
+    if (!data.players?.length) { body.innerHTML = '<tr><td colspan="5">No legacy / guest players found.</td></tr>'; return; }
+    data.players.forEach(p => {
+      const tr = document.createElement('tr');
+      [p.name, p.attempts, new Date(p.lastAttempt).toLocaleString(), p.blocked ? 'Suspended' : 'Active'].forEach(v => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
+      const actions = document.createElement('td'); actions.className = 'item-actions';
+      const toggle = document.createElement('button'); toggle.className = 'small-btn secondary-btn'; toggle.textContent = p.blocked ? 'Unsuspend' : 'Suspend'; toggle.onclick = async () => {
+        try { await api(`/players/legacy/${encodeURIComponent(p.name)}/status`, { method: 'PATCH', body: JSON.stringify({ active: p.blocked }) }); showMessage(p.blocked ? `${p.name} unsuspended.` : `${p.name} suspended.`); await loadLegacyUsers(); } catch (e) { showMessage(e.message, true); }
+      };
+      const del = document.createElement('button'); del.className = 'small-btn delete-btn'; del.textContent = 'Delete'; del.onclick = async () => {
+        if (!confirm(`Delete legacy user ${p.name}?`)) return;
+        const deleteHistory = confirm('Delete this name\'s old quiz attempts/results too?\n\nOK = Delete history\nCancel = Keep history');
+        try { await api(`/players/legacy/${encodeURIComponent(p.name)}?deleteHistory=${deleteHistory ? 'true' : 'false'}`, { method: 'DELETE' }); showMessage(deleteHistory ? `${p.name} and history deleted.` : `${p.name} removed; history preserved.`); await loadLegacyUsers(); await loadStatsAndHistory(); } catch (e) { showMessage(e.message, true); }
+      };
+      actions.append(toggle, del); tr.appendChild(actions); body.appendChild(tr);
+    });
+  } catch (e) { showMessage(e.message, true); }
+}
 $('refreshUsersBtn')?.addEventListener('click', loadUsers);
+$('refreshLegacyBtn')?.addEventListener('click', loadLegacyUsers);
 $('userSearchInput')?.addEventListener('input', (() => { let t; return () => { clearTimeout(t); t=setTimeout(loadUsers, 250); }; })());
 
 const originalLoadAllV11 = loadAll;
 loadAll = async function() {
   await originalLoadAllV11();
   await loadUsers();
+  await loadLegacyUsers();
 };

@@ -70,7 +70,7 @@ D. ..."></textarea><div class="form-actions"><button id="parseBulkBtn" type="but
 
     <section id="usersSection" class="admin-section">
       <div class="section-heading"><div><h2>Users / Students</h2><p>Manage registered student accounts.</p></div><button id="refreshUsersBtn" class="secondary-btn">↻ Refresh</button></div>
-      <section class="admin-card"><div class="filter-row"><label>Search</label><input id="userSearchInput" type="search" placeholder="Name or email"></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Attempts</th><th>Best</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="usersBody"></tbody></table></div></section>
+      <section class="admin-card"><div class="filter-row"><label>Search</label><input id="userSearchInput" type="search" placeholder="Name or email"></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Attempts</th><th>Best</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="usersBody"></tbody></table></div></section><section class="admin-card"><div class="section-header"><div><h3>Legacy / Guest Players</h3><p class="card-muted">Players who used the old name-only quiz flow. You can block or remove them too.</p></div><button id="refreshLegacyBtn" class="secondary-btn">↻ Refresh</button></div><div class="table-wrap"><table><thead><tr><th>Name</th><th>Attempts</th><th>Last Attempt</th><th>Status</th><th>Actions</th></tr></thead><tbody id="legacyUsersBody"></tbody></table></div></section>
     </section>
 
     <section id="leaderboardSection" class="admin-section"><div class="section-heading"><div><h2>Leaderboard</h2><p>Top performers by quiz or across the platform.</p></div><button id="refreshLeaderboardBtn" class="secondary-btn">↻ Refresh</button></div><section class="admin-card"><div class="filter-row"><label>Quiz</label><select id="leaderboardQuizFilter"><option value="">All quizzes</option></select></div><div class="table-wrap"><table><thead><tr><th>Rank</th><th>Student</th><th>Attempts</th><th>Best</th><th>Average</th></tr></thead><tbody id="leaderboardBody"></tbody></table></div></section></section>
@@ -78,5 +78,12 @@ D. ..."></textarea><div class="form-actions"><button id="parseBulkBtn" type="but
 </section>
 
 <div id="attemptModal" class="modal hidden"><div class="modal-card"><div class="section-header"><div><h2>Attempt Details</h2><p id="attemptMeta" class="card-muted"></p></div><button id="closeAttemptModal" class="secondary-btn">✕</button></div><div id="attemptDetailBody"></div></div></div>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+    options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+  };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 <script src="admin.js"></script>
 </body></html>

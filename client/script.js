@@ -24,6 +24,15 @@ let playerToken = localStorage.getItem('groupQuizPlayerToken') || '';
 let loggedPlayer = JSON.parse(localStorage.getItem('groupQuizPlayer') || 'null');
 
 const $ = id => document.getElementById(id);
+
+
+function typesetMath(root = document) {
+  if (!root) return;
+  if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+    window.MathJax.typesetClear?.([root]);
+    window.MathJax.typesetPromise([root]).catch(() => {});
+  }
+}
 const startScreen = $('startScreen'), quizScreen = $('quizScreen'), resultScreen = $('resultScreen');
 const quizSelect = $('quizSelect'), playerNameInput = $('playerName'), startBtn = $('startBtn');
 // Keep a single quiz selector on the player screen; older UI markup may contain a duplicate.
@@ -46,20 +55,20 @@ async function api(path, options = {}) {
 function playerMessage(msg, error = false) { $('playerMessage').textContent = msg; $('playerMessage').classList.toggle('error', error); }
 
 function updateAccountUI() {
-  if (loggedPlayer) { accountStatus.textContent = `Logged in: ${loggedPlayer.name}`; accountBtn.textContent = 'Account'; playerNameInput.value = loggedPlayer.name; }
-  else { accountStatus.textContent = 'Guest mode'; accountBtn.textContent = 'Login / Register'; }
+  if (loggedPlayer) { accountStatus.textContent = `Logged in: ${loggedPlayer.name}`; accountBtn.textContent = 'Account'; playerNameInput.value = loggedPlayer.name; startBtn.disabled = false; }
+  else { accountStatus.textContent = 'Registration required'; accountBtn.textContent = 'Login / Register'; playerNameInput.value = ''; startBtn.disabled = true; }
 }
 accountBtn.addEventListener('click', () => accountPanel.classList.toggle('hidden'));
-$('guestBtn').addEventListener('click', () => { playerToken = ''; loggedPlayer = null; localStorage.removeItem('groupQuizPlayerToken'); localStorage.removeItem('groupQuizPlayer'); updateAccountUI(); accountPanel.classList.add('hidden'); });
 $('registerBtn').addEventListener('click', async () => {
-  try { const data = await api('/player/register', { method: 'POST', body: JSON.stringify({ name: accountName.value.trim(), email: accountEmail.value.trim(), password: accountPassword.value }) }); playerToken = data.token; loggedPlayer = data.player; localStorage.setItem('groupQuizPlayerToken', playerToken); localStorage.setItem('groupQuizPlayer', JSON.stringify(loggedPlayer)); updateAccountUI(); accountPanel.classList.add('hidden'); } catch (e) { $('accountMessage').textContent = e.message; }
+  try { const data = await api('/player/register', { method: 'POST', body: JSON.stringify({ name: accountName.value.trim(), email: accountEmail.value.trim(), password: accountPassword.value }) }); playerToken = data.token; loggedPlayer = data.player; localStorage.setItem('groupQuizPlayerToken', playerToken); localStorage.setItem('groupQuizPlayer', JSON.stringify(loggedPlayer)); updateAccountUI(); accountPanel.classList.add('hidden'); await loadQuizList(); } catch (e) { $('accountMessage').textContent = e.message; }
 });
 $('loginAccountBtn').addEventListener('click', async () => {
-  try { const data = await api('/player/login', { method: 'POST', body: JSON.stringify({ email: accountEmail.value.trim(), password: accountPassword.value }) }); playerToken = data.token; loggedPlayer = data.player; localStorage.setItem('groupQuizPlayerToken', playerToken); localStorage.setItem('groupQuizPlayer', JSON.stringify(loggedPlayer)); updateAccountUI(); accountPanel.classList.add('hidden'); } catch (e) { $('accountMessage').textContent = e.message; }
+  try { const data = await api('/player/login', { method: 'POST', body: JSON.stringify({ email: accountEmail.value.trim(), password: accountPassword.value }) }); playerToken = data.token; loggedPlayer = data.player; localStorage.setItem('groupQuizPlayerToken', playerToken); localStorage.setItem('groupQuizPlayer', JSON.stringify(loggedPlayer)); updateAccountUI(); accountPanel.classList.add('hidden'); await loadQuizList(); } catch (e) { $('accountMessage').textContent = e.message; }
 });
 updateAccountUI();
 
 async function loadQuizList() {
+  if (!loggedPlayer || !playerToken) { quizSelect.innerHTML = '<option value="">Register / Login to view quizzes</option>'; startBtn.disabled = true; return; }
   try {
     const { quizzes } = await api('/quizzes/public');
     quizSelect.innerHTML = '';
@@ -71,7 +80,8 @@ async function loadQuizList() {
 }
 
 async function startQuiz() {
-  playerName = playerNameInput.value.trim();
+  if (!loggedPlayer || !playerToken) { accountPanel.classList.remove('hidden'); return playerMessage('Please register or login before attempting a quiz.', true); }
+  playerName = loggedPlayer.name;
   const quizId = quizSelect.value;
   if (!playerName) return playerMessage('Please enter your name.', true);
   if (!quizId) return playerMessage('Please select a quiz.', true);
@@ -160,6 +170,8 @@ function loadQuestion() {
   nextBtn.disabled = selectedAnswer === null;
   nextBtn.textContent = currentQuestion === questions.length - 1 ? 'Submit Quiz' : 'Next';
   progressBar.style.width = `${((currentQuestion + 1) / questions.length) * 100}%`;
+  typesetMath(questionText);
+  typesetMath(optionsContainer);
 }
 function selectAnswer(index) {
   if (!quizStarted) return;

@@ -12,15 +12,15 @@
       <h1>Group Quiz</h1>
       <p class="subtitle">Choose a quiz and test your knowledge.</p>
       <select id="quizSelect" class="player-select"><option value="">Loading quizzes...</option></select>
-      <div class="account-bar"><span id="accountStatus">Guest mode</span><button id="accountBtn" class="small-btn secondary-btn">Login / Register</button></div>
-      <input id="playerName" type="text" placeholder="Enter your name" maxlength="30" autocomplete="off">
+      <div class="account-bar"><span id="accountStatus">Not logged in</span><button id="accountBtn" class="small-btn secondary-btn">Login / Register</button></div>
+      <input id="playerName" type="text" placeholder="Your registered name" maxlength="30" autocomplete="off" readonly>
       <button id="startBtn">Start Quiz</button>
       <p id="playerMessage" class="admin-message"></p>
       <div id="accountPanel" class="account-panel hidden">
         <input id="accountName" type="text" placeholder="Name (for registration)" maxlength="30">
         <input id="accountEmail" type="email" placeholder="Email">
         <input id="accountPassword" type="password" placeholder="Password (6+ characters)">
-        <div class="account-actions"><button id="registerBtn">Register</button><button id="loginAccountBtn" class="secondary-btn">Login</button><button id="guestBtn" class="secondary-btn">Continue as Guest</button></div>
+        <div class="account-actions"><button id="registerBtn">Register</button><button id="loginAccountBtn" class="secondary-btn">Login</button></div>
         <p id="accountMessage" class="admin-message"></p>
       </div>
     </div>
@@ -49,6 +49,13 @@
 
   <div id="warningModal" class="modal"><div class="modal-box"><h2>⚠️ Warning</h2><p id="warningMessage">Please stay in the quiz window.</p><button id="warningOkBtn">Continue Quiz</button></div></div>
   <audio id="warningSound" preload="auto"><source src="warning.mp3" type="audio/mpeg"></audio>
-  <script src="script.js"></script>
+  <script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+    options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+  };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="script.js"></script>
 </body>
 </html>

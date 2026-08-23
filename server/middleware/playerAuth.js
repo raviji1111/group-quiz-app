@@ -8,4 +8,10 @@ function optionalPlayer(req, res, next) {
   } catch {}
   next();
 }
-module.exports = { optionalPlayer };
+function requirePlayer(req, res, next) {
+  optionalPlayer(req, res, () => {
+    if (!req.player?.id) return res.status(401).json({ code: 'AUTH_REQUIRED', message: 'Please register or login before accessing quizzes.' });
+    next();
+  });
+}
+module.exports = { optionalPlayer, requirePlayer };

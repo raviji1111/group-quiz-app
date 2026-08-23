@@ -23,3 +23,12 @@
 
 ## Deliberate limitation
 Browser anti-cheat controls cannot guarantee prevention of all cheating. They should be treated as deterrents, while the backend remains authoritative for quiz data and scoring.
+
+## v13 Final
+- Registration/login is required before students can view or attempt quizzes.
+- Registered users can be activated/deactivated or deleted by the admin.
+- Legacy name-only players can be reviewed, suspended/unsuspended, or deleted from Users.
+- Inline question editing updates a single live question directly from its question card.
+- Correct-answer selection remains available in inline editing.
+- Added MathJax rendering to the admin question preview and player question/options so LaTeX such as `\\(\\frac{x}{y}\\)` renders as a mathematical fraction instead of raw LaTeX text.
+- Editable text fields continue to show the original LaTeX source so formulas remain easy to modify.

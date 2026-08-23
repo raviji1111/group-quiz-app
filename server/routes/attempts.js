@@ -4,19 +4,22 @@ const Attempt = require('../models/Attempt');
 const QuizSession = require('../models/QuizSession');
 const { requireAdmin } = require('../middleware/auth');
 const { optionalPlayer } = require('../middleware/playerAuth');
+const Player = require('../models/Player');
 
 const router = express.Router();
 
 router.post('/start', optionalPlayer, async (req, res) => {
   try {
     const quizId = String(req.body.quizId || '');
-    const playerName = String(req.body.playerName || '').trim();
-    if (!playerName || playerName.length > 30) return res.status(400).json({ message: 'Player name is required and must be 30 characters or fewer.' });
-
     const quiz = await Quiz.findOne({ _id: quizId, isPublished: true });
     if (!quiz) return res.status(404).json({ message: 'Quiz not found.' });
 
     const playerId = req.player?.id || null;
+    if (!playerId) return res.status(401).json({ code: 'AUTH_REQUIRED', message: 'Please register or login before attempting a quiz.' });
+    const player = await Player.findById(playerId).select('active name');
+    if (!player) return res.status(401).json({ code: 'AUTH_REQUIRED', message: 'Your account could not be found. Please register or login again.' });
+    if (player.active === false) return res.status(403).json({ message: 'Your account is suspended. Please contact the administrator.' });
+    const playerName = player.name;
     const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const safePlayerName = escapeRegex(playerName);
     const playerFilter = playerId ? { player: playerId } : { player: null, playerName: new RegExp(`^${safePlayerName}$`, 'i') };
@@ -52,7 +55,8 @@ router.get('/session/:id', optionalPlayer, async (req, res) => {
   try {
     const session = await QuizSession.findById(req.params.id);
     if (!session) return res.status(404).json({ message: 'Quiz session not found.' });
-    if (req.player?.id && session.player && String(req.player.id) !== String(session.player)) return res.status(403).json({ message: 'This quiz session belongs to another player.' });
+    if (!req.player?.id) return res.status(401).json({ code: 'AUTH_REQUIRED', message: 'Please login to resume this quiz.' });
+    if (!session.player || String(req.player.id) !== String(session.player)) return res.status(403).json({ message: 'This quiz session belongs to another player.' });
     const quiz = await Quiz.findOne({ _id: session.quiz, isPublished: true }).select('_id title time maxViolations examMode questions.question questions.options');
     if (!quiz) return res.status(404).json({ message: 'Quiz not found.' });
     const now = new Date();

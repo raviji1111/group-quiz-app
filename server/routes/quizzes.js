@@ -3,6 +3,7 @@ const multer = require('multer');
 const pdfParse = require('pdf-parse');
 const Quiz = require('../models/Quiz');
 const { requireAdmin } = require('../middleware/auth');
+const { requirePlayer } = require('../middleware/playerAuth');
 
 const router = express.Router();
 
@@ -94,7 +95,7 @@ function normalizeQuiz(body, adminId) {
   return { title, time, maxViolations, examMode, questions: cleaned, createdBy: adminId, isPublished: true, joinStartAt, joinEndAt, scheduledStartAt };
 }
 
-router.get('/public', async (req, res) => {
+router.get('/public', requirePlayer, async (req, res) => {
   try {
     const quizzes = await Quiz.find({ isPublished: true }).sort({ createdAt: -1 }).select('_id title time maxViolations examMode joinStartAt joinEndAt scheduledStartAt questions.question questions.options');
     res.json({ quizzes });
@@ -124,7 +125,7 @@ router.get('/:id/admin', requireAdmin, async (req, res) => {
   }
 });
 
-router.get('/:id/public', async (req, res) => {
+router.get('/:id/public', requirePlayer, async (req, res) => {
   try {
     const quiz = await Quiz.findOne({ _id: req.params.id, isPublished: true }).select('_id title time maxViolations examMode joinStartAt joinEndAt scheduledStartAt questions.question questions.options');
     if (!quiz) return res.status(404).json({ message: 'Quiz not found.' });

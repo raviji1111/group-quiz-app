@@ -2,9 +2,53 @@ const express = require('express');
 const Player = require('../models/Player');
 const Attempt = require('../models/Attempt');
 const QuizSession = require('../models/QuizSession');
+const BlockedGuest = require('../models/BlockedGuest');
 const { requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
+
+
+router.get('/legacy', requireAdmin, async (req, res) => {
+  try {
+    const rows = await Attempt.aggregate([
+      { $match: { player: null, playerName: { $exists: true, $ne: '' } } },
+      { $group: { _id: { $toLower: '$playerName' }, name: { $first: '$playerName' }, attempts: { $sum: 1 }, lastAttempt: { $max: '$createdAt' } } },
+      { $sort: { lastAttempt: -1 } }, { $limit: 500 }
+    ]);
+    const names = rows.map(r => r._id);
+    const blocked = await BlockedGuest.find({ normalizedName: { $in: names } }).select('normalizedName reason createdAt').lean();
+    const blockedMap = new Map(blocked.map(b => [b.normalizedName, b]));
+    res.json({ players: rows.map(r => ({ name: r.name, normalizedName: r._id, attempts: r.attempts, lastAttempt: r.lastAttempt, blocked: Boolean(blockedMap.get(r._id)), reason: blockedMap.get(r._id)?.reason || '' })) });
+  } catch (error) { console.error(error); res.status(500).json({ message: 'Could not load legacy users.' }); }
+});
+
+router.patch('/legacy/:name/status', requireAdmin, async (req, res) => {
+  try {
+    const name = decodeURIComponent(req.params.name).trim();
+    const normalizedName = name.toLowerCase();
+    const blocked = !Boolean(req.body.active);
+    if (!name || name.length > 30) return res.status(400).json({ message: 'Invalid player name.' });
+    if (blocked) await BlockedGuest.findOneAndUpdate({ normalizedName }, { name, normalizedName, reason: 'Blocked by administrator' }, { upsert: true, new: true, setDefaultsOnInsert: true });
+    else await BlockedGuest.deleteOne({ normalizedName });
+    res.json({ ok: true, blocked });
+  } catch (error) { console.error(error); res.status(400).json({ message: 'Could not update legacy user status.' }); }
+});
+
+router.delete('/legacy/:name', requireAdmin, async (req, res) => {
+  try {
+    const name = decodeURIComponent(req.params.name).trim();
+    const re = new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+    const deleteHistory = String(req.query.deleteHistory || '') === 'true';
+    if (deleteHistory) {
+      await Attempt.deleteMany({ player: null, playerName: re });
+      await QuizSession.deleteMany({ player: null, playerName: re });
+    } else {
+      await QuizSession.deleteMany({ player: null, playerName: re, submitted: false });
+    }
+    await BlockedGuest.deleteOne({ normalizedName: name.toLowerCase() });
+    res.json({ ok: true, historyDeleted: deleteHistory });
+  } catch (error) { console.error(error); res.status(400).json({ message: 'Could not delete legacy user.' }); }
+});
 
 router.get('/', requireAdmin, async (req, res) => {
   try {

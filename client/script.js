@@ -107,8 +107,28 @@ if (themeToggle) {
 
 
 async function api(path, options = {}) {
-  const res = await fetch(`${API}${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...(playerToken ? { Authorization: `Bearer ${playerToken}` } : {}), ...(options.headers || {}) } });
+  const res = await fetch(`${API}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(playerToken ? { Authorization: `Bearer ${playerToken}` } : {}),
+      ...(options.headers || {})
+    }
+  });
   const data = await res.json().catch(() => ({}));
+
+  // A player JWT can expire or become invalid after a server/JWT_SECRET
+  // change. Previously the UI trusted localStorage and stayed stuck on
+  // "Loading quizzes..." even though the API had returned 401.
+  if (res.status === 401 && data.code === 'AUTH_REQUIRED') {
+    playerToken = '';
+    loggedPlayer = null;
+    localStorage.removeItem('groupQuizPlayerToken');
+    localStorage.removeItem('groupQuizPlayer');
+    updateAccountUI();
+    throw new Error('Your login session expired. Please login again.');
+  }
+
   if (!res.ok) throw new Error(data.message || 'Request failed.');
   return data;
 }
@@ -232,8 +252,11 @@ async function loadQuizList() {
     renderQuizCards(quizzes);
     await loadLiveQuizzes();
   } catch (e) {
-    quizSelect.innerHTML = '<option value="">Could not load quizzes</option>';
+    quizSelect.innerHTML = `<option value="">${escapeHtml(e.message || 'Could not load quizzes')}</option>`;
     startBtn.disabled = true;
+    renderSubjectGrid([]);
+    renderQuizCards([]);
+    renderLiveCards([]);
     playerMessage(e.message, true);
   }
 }

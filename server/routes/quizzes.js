@@ -229,7 +229,7 @@ function normalizeQuiz(body, adminId) {
   return { title, subject, topic, time, liveDuration, maxViolations, examMode, questions: cleaned, createdBy: adminId, isPublished: true, joinStartAt, joinEndAt, scheduledStartAt, showLiveScore: body.showLiveScore !== false, showLeaderboard: body.showLeaderboard !== false };
 }
 
-router.get('/public', requirePlayer, async (req, res) => {
+router.get('/public', optionalPlayer, async (req, res) => {
   try {
     const quizzes = await Quiz.find({ isPublished: true }).sort({ createdAt: -1 }).select('_id title subject topic time maxViolations examMode joinStartAt joinEndAt scheduledStartAt liveStatus liveStartedAt liveEndsAt showLiveScore showLeaderboard questions.question questions.options');
     res.json({ quizzes });

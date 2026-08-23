@@ -52,6 +52,3 @@ Browser anti-cheat controls (fullscreen, tab/blur detection, disabling copy/past
 - Players can register/login or continue as guests.
 - Logged-in player identity is attached to quiz sessions and attempts.
 - Admin dashboard includes a global leaderboard based on best and average percentage.
-## Player session recovery
-If a player's saved JWT expires or becomes invalid (for example after a JWT secret change), the player page now clears the stale browser session and asks the player to log in again instead of remaining stuck on “Loading quizzes...”.
-

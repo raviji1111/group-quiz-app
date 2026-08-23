@@ -29,15 +29,10 @@ router.post('/start', optionalPlayer, async (req, res) => {
     const safePlayerName = escapeRegex(playerName);
     const playerFilter = playerId ? { player: playerId } : { player: null, playerName: new RegExp(`^${safePlayerName}$`, 'i') };
     const existing = await QuizSession.findOne({ quiz: quiz._id, ...playerFilter, submitted: false }).sort({ createdAt: -1 });
+    const completed = await Attempt.findOne({ quiz: quiz._id, ...(playerId ? { player: playerId } : { player: null, playerName: new RegExp(`^${safePlayerName}$`, 'i') }) });
+    if (completed) return res.status(409).json({ message: 'You have already completed this quiz.' });
+
     const now = new Date();
-    // Practice/uploaded quizzes can be attempted repeatedly. Live sessions are one-time per player.
-    const isLiveQuiz = quiz.liveStatus === 'live' || req.body.live === true;
-    if (isLiveQuiz) {
-      const completed = await Attempt.findOne({ quiz: quiz._id, ...(playerId ? { player: playerId } : { player: null, playerName: new RegExp(`^${safePlayerName}$`, 'i') }) });
-      if (completed) return res.status(409).json({ code: 'LIVE_ALREADY_ATTEMPTED', message: 'You have already completed this live quiz.' });
-    }
-
-
     const joinStart = quiz.joinStartAt ? new Date(quiz.joinStartAt) : null;
     const joinEnd = quiz.joinEndAt ? new Date(quiz.joinEndAt) : null;
     const scheduledStart = quiz.scheduledStartAt ? new Date(quiz.scheduledStartAt) : null;

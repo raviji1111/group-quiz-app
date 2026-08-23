@@ -60,11 +60,13 @@ function formatMathText(value) {
   text = text.replace(/(?<![\d/>])\b(\d+)\s*\/\s*(\d+)\b/g,
     '<span class="mixed-fraction standalone-fraction"><span class="fraction-top">$1</span><span class="fraction-bottom">$2</span></span>');
 
-  // Keep bilingual questions in two clean lines. Many PDF extractors return
-  // English + Hindi on one line (e.g. "...is? किसी..."). Split only at the
-  // English-to-Devanagari boundary so spaces inside the Hindi sentence remain intact.
-  text = text.replace(/([A-Za-z0-9%\)\]\?\!\.:;])\s+(?=[\u0900-\u097F])/g, '$1<br class="bilingual-break">');
-  text = text.replace(/\r?\n/g, '<br class="bilingual-break">');
+  // Normalize PDF text line-wraps before rendering. PDF extraction often
+  // inserts a newline after every visual line, which made Hindi questions
+  // appear as one short line per extracted line. Treat those wraps as normal
+  // spaces, then create only the intentional English -> Hindi language break.
+  text = text.replace(/\r?\n+/g, ' ');
+  text = text.replace(/[ \t]{2,}/g, ' ').trim();
+  text = text.replace(/([A-Za-z0-9%\)\]\?!\.:;])\s+(?=[\u0900-\u097F])/g, '$1<br class="bilingual-break">');
 
   return text;
 }
@@ -107,10 +109,33 @@ if (themeToggle) {
 
 
 async function api(path, options = {}) {
-  const res = await fetch(`${API}${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...(playerToken ? { Authorization: `Bearer ${playerToken}` } : {}), ...(options.headers || {}) } });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || 'Request failed.');
-  return data;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), Number(options.timeoutMs || 12000));
+  const { timeoutMs, ...fetchOptions } = options;
+  try {
+    const res = await fetch(`${API}${path}`, {
+      ...fetchOptions,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(playerToken ? { Authorization: `Bearer ${playerToken}` } : {}),
+        ...(fetchOptions.headers || {})
+      }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const error = new Error(data.message || 'Request failed.');
+      error.status = res.status;
+      error.code = data.code;
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    if (error.name === 'AbortError') throw new Error('Quiz list request timed out. Please refresh the page.');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 function playerMessage(msg, error = false) { $('playerMessage').textContent = msg; $('playerMessage').classList.toggle('error', error); }
 
@@ -232,24 +257,13 @@ async function loadQuizList() {
     renderQuizCards(quizzes);
     await loadLiveQuizzes();
   } catch (e) {
-    // A saved player token can expire while the browser is still open.
-    // The published quiz catalog is public to the signed-in hub, so don't let
-    // a stale token make an already-published quiz list look empty/broken.
-    if (/login|register|auth|token|unauthori[sz]ed|401/i.test(e.message || '')) {
-      playerToken = '';
-      loggedPlayer = null;
-      localStorage.removeItem('groupQuizPlayerToken');
-      localStorage.removeItem('groupQuizPlayer');
-      updateAccountUI();
-      renderSubjectGrid([]); renderQuizCards([]); renderLiveCards([]);
-      if (quizSelect) quizSelect.innerHTML = '<option value="">Register / Login to view quizzes</option>';
-      if (startBtn) startBtn.disabled = true;
-      playerMessage('Your login session expired. Please login again to start a quiz.', true);
-      return;
-    }
     quizSelect.innerHTML = '<option value="">Could not load quizzes</option>';
     startBtn.disabled = true;
-    playerMessage(e.message, true);
+    renderSubjectGrid([]);
+    renderQuizCards([]);
+    renderLiveCards([]);
+    playerMessage(e.message || 'Could not load quizzes.', true);
+    console.error('Quiz catalog load failed:', e);
   }
 }
 
@@ -341,7 +355,7 @@ async function startQuiz() {
     startBtn.disabled = true;
     const data = await api(`/quizzes/${quizId}/public`);
     quiz = data.quiz;
-    const session = await api('/attempts/start', { method: 'POST', body: JSON.stringify({ quizId, playerName, live: quiz.liveStatus === 'live' }) });
+    const session = await api('/attempts/start', { method: 'POST', body: JSON.stringify({ quizId, playerName }) });
     playerName = session.playerName || playerName;
     localStorage.setItem(SESSION_STORAGE_KEY, String(session.sessionId));
     await setupSession(session, quiz);
@@ -407,7 +421,6 @@ async function resumeStoredSession() {
 }
 
 startBtn.addEventListener('click', startQuiz);
-startBtn.textContent = 'Start Selected Quiz';
 playerNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') startQuiz(); });
 
 function loadQuestion() {

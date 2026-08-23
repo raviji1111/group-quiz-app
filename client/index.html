@@ -32,7 +32,7 @@
     <section class="subject-section"><div class="player-section-head"><div><span class="card-eyebrow">EXPLORE</span><h2>Subjects</h2></div><p>Choose a subject to see its topics</p></div><div id="subjectGrid" class="subject-grid"></div></section>
     <section id="quizCatalog" class="catalog-section"><div class="player-section-head"><div><span class="card-eyebrow">QUIZZES</span><h2 id="catalogTitle">All Quizzes</h2></div><select id="quizSelect" class="player-select"><option value="">Loading quizzes...</option></select></div><div id="topicFilter" class="topic-filter"></div><div id="quizCards" class="quiz-card-grid"></div></section>
     <section id="livePreview" class="live-preview-section"><div class="player-section-head"><div><span class="card-eyebrow live-eyebrow">LIVE NOW</span><h2>Live Quiz</h2></div><button id="refreshLiveBtn" class="secondary-btn">↻ Refresh</button></div><div id="liveCards" class="live-card-grid"></div></section>
-    <div class="account-bar compact-account-bar"><span id="accountStatusMirror">Signed in.</span></div>
+    <div class="account-bar"><span id="accountStatusMirror">Signed in.</span><button id="startBtn">Start Selected Quiz</button></div>
     <input id="playerName" type="text" maxlength="30" readonly class="hidden-input">
     <p id="playerMessage" class="admin-message"></p>
   </div>
@@ -45,5 +45,5 @@
 
 <div id="warningModal" class="modal"><div class="modal-box"><h2>⚠️ Warning</h2><p id="warningMessage">Please stay in the quiz window.</p><button id="warningOkBtn">Continue Quiz</button></div></div>
 <audio id="warningSound" preload="auto"><source src="warning.mp3" type="audio/mpeg"></audio>
-<script src="script.js"></script>
+<script src="script.js?v=20.3.2"></script>
 </body></html>

@@ -60,13 +60,11 @@ function formatMathText(value) {
   text = text.replace(/(?<![\d/>])\b(\d+)\s*\/\s*(\d+)\b/g,
     '<span class="mixed-fraction standalone-fraction"><span class="fraction-top">$1</span><span class="fraction-bottom">$2</span></span>');
 
-  // Normalize PDF text line-wraps before rendering. PDF extraction often
-  // inserts a newline after every visual line, which made Hindi questions
-  // appear as one short line per extracted line. Treat those wraps as normal
-  // spaces, then create only the intentional English -> Hindi language break.
-  text = text.replace(/\r?\n+/g, ' ');
-  text = text.replace(/[ \t]{2,}/g, ' ').trim();
-  text = text.replace(/([A-Za-z0-9%\)\]\?!\.:;])\s+(?=[\u0900-\u097F])/g, '$1<br class="bilingual-break">');
+  // Keep bilingual questions in two clean lines. Many PDF extractors return
+  // English + Hindi on one line (e.g. "...is? किसी..."). Split only at the
+  // English-to-Devanagari boundary so spaces inside the Hindi sentence remain intact.
+  text = text.replace(/([A-Za-z0-9%\)\]\?\!\.:;])\s+(?=[\u0900-\u097F])/g, '$1<br class="bilingual-break">');
+  text = text.replace(/\r?\n/g, '<br class="bilingual-break">');
 
   return text;
 }
@@ -328,7 +326,7 @@ async function startQuiz() {
     startBtn.disabled = true;
     const data = await api(`/quizzes/${quizId}/public`);
     quiz = data.quiz;
-    const session = await api('/attempts/start', { method: 'POST', body: JSON.stringify({ quizId, playerName }) });
+    const session = await api('/attempts/start', { method: 'POST', body: JSON.stringify({ quizId, playerName, live: quiz.liveStatus === 'live' }) });
     playerName = session.playerName || playerName;
     localStorage.setItem(SESSION_STORAGE_KEY, String(session.sessionId));
     await setupSession(session, quiz);
@@ -394,6 +392,7 @@ async function resumeStoredSession() {
 }
 
 startBtn.addEventListener('click', startQuiz);
+startBtn.textContent = 'Start Selected Quiz';
 playerNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') startQuiz(); });
 
 function loadQuestion() {

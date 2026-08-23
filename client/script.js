@@ -88,62 +88,207 @@ async function api(path, options = {}) {
 }
 function playerMessage(msg, error = false) { $('playerMessage').textContent = msg; $('playerMessage').classList.toggle('error', error); }
 
-function updateAccountUI() {
-  if (loggedPlayer) { accountStatus.textContent = `Logged in: ${loggedPlayer.name}`; if($('accountStatusMirror'))$('accountStatusMirror').textContent=`Signed in as ${loggedPlayer.name}. You can start a quiz now.`; accountBtn.textContent = 'Account'; playerNameInput.value = loggedPlayer.name; startBtn.disabled = false; }
-  else { accountStatus.textContent = 'Registration required'; if($('accountStatusMirror'))$('accountStatusMirror').textContent='Please register or login to attempt quizzes.'; accountBtn.textContent = 'Login / Register'; playerNameInput.value = ''; startBtn.disabled = true; }
+function setAuthView() {
+  const gate = $('authGate');
+  const hub = $('quizHubContent');
+  if (loggedPlayer && playerToken) {
+    gate?.classList.add('hidden');
+    hub?.classList.remove('hidden');
+  } else {
+    gate?.classList.remove('hidden');
+    hub?.classList.add('hidden');
+  }
 }
-accountBtn.addEventListener('click', () => accountPanel.classList.toggle('hidden'));
+
+function updateAccountUI() {
+  setAuthView();
+  if (loggedPlayer && playerToken) {
+    accountStatus.textContent = `Logged in: ${loggedPlayer.name}`;
+    if ($('accountStatusMirror')) $('accountStatusMirror').textContent = `Signed in as ${loggedPlayer.name}. Choose a subject or topic to begin.`;
+    accountBtn.textContent = 'Account';
+    playerNameInput.value = loggedPlayer.name;
+    startBtn.disabled = false;
+  } else {
+    accountStatus.textContent = 'Registration required';
+    if ($('accountStatusMirror')) $('accountStatusMirror').textContent = 'Please register or login to attempt quizzes.';
+    accountBtn.textContent = 'Login / Register';
+    playerNameInput.value = '';
+    startBtn.disabled = true;
+  }
+}
+
+function logoutPlayer() {
+  playerToken = '';
+  loggedPlayer = null;
+  localStorage.removeItem('groupQuizPlayerToken');
+  localStorage.removeItem('groupQuizPlayer');
+  clearInterval(liveScoreInterval);
+  updateAccountUI();
+  renderSubjectGrid([]);
+  renderQuizCards([]);
+  renderLiveCards([]);
+  if ($('accountMessage')) $('accountMessage').textContent = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+accountBtn.addEventListener('click', () => {
+  if (loggedPlayer && playerToken) {
+    const ok = confirm(`Logged in as ${loggedPlayer.name}.\n\nDo you want to logout?`);
+    if (ok) logoutPlayer();
+  } else {
+    $('accountName')?.focus();
+    $('authGate')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+});
+
 $('registerBtn').addEventListener('click', async () => {
-  try { const data = await api('/player/register', { method: 'POST', body: JSON.stringify({ name: accountName.value.trim(), email: accountEmail.value.trim(), password: accountPassword.value }) }); playerToken = data.token; loggedPlayer = data.player; localStorage.setItem('groupQuizPlayerToken', playerToken); localStorage.setItem('groupQuizPlayer', JSON.stringify(loggedPlayer)); updateAccountUI(); accountPanel.classList.add('hidden'); await loadQuizList(); } catch (e) { $('accountMessage').textContent = e.message; }
+  const message = $('accountMessage');
+  try {
+    if (!accountName.value.trim() || !accountEmail.value.trim() || accountPassword.value.length < 6) throw new Error('Please enter your name, email and a password of at least 6 characters.');
+    const data = await api('/player/register', { method: 'POST', body: JSON.stringify({ name: accountName.value.trim(), email: accountEmail.value.trim(), password: accountPassword.value }) });
+    playerToken = data.token;
+    loggedPlayer = data.player;
+    localStorage.setItem('groupQuizPlayerToken', playerToken);
+    localStorage.setItem('groupQuizPlayer', JSON.stringify(loggedPlayer));
+    if (message) message.textContent = 'Account created successfully. Loading your quiz hub...';
+    updateAccountUI();
+    await loadQuizList();
+    document.getElementById('quizHubContent')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) { if (message) message.textContent = e.message; }
 });
+
 $('loginAccountBtn').addEventListener('click', async () => {
-  try { const data = await api('/player/login', { method: 'POST', body: JSON.stringify({ email: accountEmail.value.trim(), password: accountPassword.value }) }); playerToken = data.token; loggedPlayer = data.player; localStorage.setItem('groupQuizPlayerToken', playerToken); localStorage.setItem('groupQuizPlayer', JSON.stringify(loggedPlayer)); updateAccountUI(); accountPanel.classList.add('hidden'); await loadQuizList(); } catch (e) { $('accountMessage').textContent = e.message; }
+  const message = $('accountMessage');
+  try {
+    if (!accountEmail.value.trim() || !accountPassword.value) throw new Error('Enter your email and password to login.');
+    const data = await api('/player/login', { method: 'POST', body: JSON.stringify({ email: accountEmail.value.trim(), password: accountPassword.value }) });
+    playerToken = data.token;
+    loggedPlayer = data.player;
+    localStorage.setItem('groupQuizPlayerToken', playerToken);
+    localStorage.setItem('groupQuizPlayer', JSON.stringify(loggedPlayer));
+    if (message) message.textContent = 'Login successful. Loading your quiz hub...';
+    updateAccountUI();
+    await loadQuizList();
+    document.getElementById('quizHubContent')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) { if (message) message.textContent = e.message; }
 });
+
 updateAccountUI();
 
 async function loadQuizList() {
   if (!loggedPlayer || !playerToken) {
-    quizSelect.innerHTML = '<option value="">Register / Login to view quizzes</option>';
-    startBtn.disabled = true;
+    setAuthView();
+    if (quizSelect) quizSelect.innerHTML = '<option value="">Register / Login to view quizzes</option>';
+    if (startBtn) startBtn.disabled = true;
     renderSubjectGrid([]); renderQuizCards([]); renderLiveCards([]);
     return;
   }
   try {
     const { quizzes } = await api('/quizzes/public');
+    if (!quizSelect) return;
     quizSelect.innerHTML = '';
-    if (!quizzes.length) { quizSelect.innerHTML = '<option value="">No published quizzes</option>'; startBtn.disabled = true; renderSubjectGrid([]); renderQuizCards([]); return; }
-    quizzes.forEach(q => { const o=document.createElement('option'); o.value=q._id; o.textContent=`${q.title} — ${q.questions.length} questions · ${q.time} min`; quizSelect.appendChild(o); });
-    const requested=new URLSearchParams(location.search).get('quiz'); if(requested && quizzes.some(q=>q._id===requested)) quizSelect.value=requested;
-    window.availableQuizzes=quizzes;
-    renderSubjectGrid(quizzes); renderQuizCards(quizzes); await loadLiveQuizzes();
-  } catch(e) { quizSelect.innerHTML='<option value="">Could not load quizzes</option>'; startBtn.disabled=true; playerMessage(e.message,true); }
+    if (!quizzes.length) {
+      quizSelect.innerHTML = '<option value="">No published quizzes</option>';
+      startBtn.disabled = true;
+      renderSubjectGrid([]); renderQuizCards([]); renderLiveCards([]);
+      return;
+    }
+    quizzes.forEach(q => {
+      const o = document.createElement('option');
+      o.value = q._id;
+      o.textContent = `${q.title} — ${q.questions.length} questions · ${q.time} min`;
+      quizSelect.appendChild(o);
+    });
+    const requested = new URLSearchParams(location.search).get('quiz');
+    if (requested && quizzes.some(q => q._id === requested)) quizSelect.value = requested;
+    window.availableQuizzes = quizzes;
+    renderSubjectGrid(quizzes);
+    renderQuizCards(quizzes);
+    await loadLiveQuizzes();
+  } catch (e) {
+    quizSelect.innerHTML = '<option value="">Could not load quizzes</option>';
+    startBtn.disabled = true;
+    playerMessage(e.message, true);
+  }
 }
 
 function renderSubjectGrid(quizzes) {
-  const grid=$('subjectGrid'); if(!grid)return; grid.innerHTML='';
-  const map=new Map(); (quizzes||[]).forEach(q=>{const subject=q.subject||'General'; if(!map.has(subject))map.set(subject,[]); map.get(subject).push(q);});
-  if(!map.size){grid.innerHTML='<div class="empty-state">Login to explore quizzes.</div>';return;}
-  [...map.entries()].forEach(([subject,list])=>{
-    const card=document.createElement('button'); card.className='subject-card'; card.innerHTML=`<span class="subject-icon">${subjectIcon(subject)}</span><span><strong></strong><small>${list.length} quiz${list.length===1?'':'zes'}</small></span><b>→</b>`; card.querySelector('strong').textContent=subject; card.onclick=()=>renderQuizCards(list,subject); grid.appendChild(card);
+  const grid = $('subjectGrid'); if (!grid) return;
+  grid.innerHTML = '';
+  const map = new Map();
+  (quizzes || []).forEach(q => {
+    const subject = q.subject || 'General';
+    if (!map.has(subject)) map.set(subject, []);
+    map.get(subject).push(q);
+  });
+  if (!map.size) { grid.innerHTML = '<div class="empty-state">No published quizzes are available yet.</div>'; return; }
+  [...map.entries()].forEach(([subject, list]) => {
+    const topics = [...new Set(list.map(q => q.topic || 'General'))];
+    const card = document.createElement('button');
+    card.className = 'subject-card';
+    card.innerHTML = `<span class="subject-icon">${subjectIcon(subject)}</span><span><strong></strong><small>${list.length} quiz${list.length === 1 ? '' : 'zes'} · ${topics.length} topic${topics.length === 1 ? '' : 's'}</small></span><b>→</b>`;
+    card.querySelector('strong').textContent = subject;
+    card.onclick = () => {
+      renderQuizCards(list, subject);
+      document.getElementById('quizCatalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    grid.appendChild(card);
   });
 }
-function subjectIcon(s){const x=String(s).toLowerCase(); if(x.includes('math'))return '∑'; if(x.includes('reason'))return '⌁'; if(x.includes('gk')||x.includes('general'))return '◆'; if(x.includes('hindi'))return 'अ'; if(x.includes('science'))return '⚗'; return '✦';}
-function renderQuizCards(quizzes,title='All Quizzes') {
-  const grid=$('quizCards'), heading=$('catalogTitle'); if(!grid)return; grid.innerHTML=''; if(heading)heading.textContent=title;
-  (quizzes||[]).slice(0,60).forEach(q=>{const card=document.createElement('article');card.className='quiz-catalog-card';card.innerHTML=`<div class="catalog-top"><span class="subject-pill"></span><span>${q.time} min</span></div><h3></h3><p class="catalog-topic"></p><div class="catalog-bottom"><span>${q.questions.length} Questions</span><button>Start →</button></div>`;card.querySelector('.subject-pill').textContent=q.subject||'General';card.querySelector('h3').textContent=q.title;card.querySelector('.catalog-topic').textContent=q.topic||'General';card.querySelector('button').onclick=()=>{quizSelect.value=q._id;startQuiz();};grid.appendChild(card);});
-  if(!(quizzes||[]).length)grid.innerHTML='<div class="empty-state">No quizzes in this subject yet.</div>';
-}
-async function loadLiveQuizzes(){
-  const wrap=$('liveCards'); if(!wrap)return;
-  try{const data=await api('/live/active');renderLiveCards(data.quizzes||[]);}catch(e){renderLiveCards([]);}
-}
-function renderLiveCards(quizzes){const wrap=$('liveCards');if(!wrap)return;wrap.innerHTML='';if(!quizzes.length){wrap.innerHTML='<div class="live-empty">No live quiz right now. Check back soon.</div>';return;}quizzes.forEach(q=>{const card=document.createElement('article');card.className='live-player-card';card.innerHTML=`<div class="live-player-top"><span>🔴 LIVE NOW</span><strong></strong></div><p></p><h3></h3><div class="live-player-meta"><span>${q.questions.length} Questions</span><span>${q.time} Minutes</span></div><button>Join Live Quiz →</button>`;card.querySelector('strong').textContent=q.subject||'General';card.querySelector('p').textContent=q.topic||'General';card.querySelector('h3').textContent=q.title;card.querySelector('button').onclick=()=>{quizSelect.value=q._id;startQuiz();};wrap.appendChild(card);});}
+function subjectIcon(s) { const x = String(s).toLowerCase(); if (x.includes('math')) return '∑'; if (x.includes('reason')) return '⌁'; if (x.includes('gk') || x.includes('general')) return '◆'; if (x.includes('hindi')) return 'अ'; if (x.includes('science')) return '⚗'; return '✦'; }
 
-async function showLiveBoard(){
-  if(!quiz?.liveStatus || quiz.liveStatus!=='live') return;
-  try{const data=await api(`/live/${quiz._id}/board`);const el=$('liveScoreStrip');if(!el)return;if(data.quiz.showLiveScore && data.me){el.classList.remove('hidden');el.innerHTML=`Live score: <strong>${data.me.score}/${data.me.total}</strong> · Answered ${data.me.answered} · ${data.participants} participants`;} if(data.quiz.showLeaderboard){const box=$('resultLiveBoard');if(box)box.innerHTML='<h3>Live Leaderboard</h3>'+data.leaderboard.slice(0,10).map(r=>`<div><span>#${r.rank} ${escapeHtml(r.playerName)}</span><strong>${r.score}/${r.total}</strong></div>`).join('');}}catch(e){}
+function renderQuizCards(quizzes, title = 'All Quizzes') {
+  const grid = $('quizCards'), heading = $('catalogTitle'), filter = $('topicFilter');
+  if (!grid) return;
+  grid.innerHTML = '';
+  if (heading) heading.textContent = title;
+  if (filter) filter.innerHTML = '';
+  const list = quizzes || [];
+  const topics = [...new Set(list.map(q => q.topic || 'General'))];
+  let selectedTopic = '';
+  const draw = (items) => {
+    grid.innerHTML = '';
+    items.slice(0, 60).forEach(q => {
+      const card = document.createElement('article');
+      card.className = 'quiz-catalog-card';
+      card.innerHTML = `<div class="catalog-top"><span class="subject-pill"></span><span>${q.time} min</span></div><h3></h3><p class="catalog-topic"></p><div class="catalog-bottom"><span>${q.questions.length} Questions</span><button>Start →</button></div>`;
+      card.querySelector('.subject-pill').textContent = q.subject || 'General';
+      card.querySelector('h3').textContent = q.title;
+      card.querySelector('.catalog-topic').textContent = `Topic: ${q.topic || 'General'}`;
+      card.querySelector('button').onclick = () => { quizSelect.value = q._id; startQuiz(); };
+      grid.appendChild(card);
+    });
+    if (!items.length) grid.innerHTML = '<div class="empty-state">No quizzes in this topic yet.</div>';
+  };
+  if (filter && topics.length > 0) {
+    const all = document.createElement('button'); all.className = 'topic-chip active'; all.textContent = 'All topics';
+    all.onclick = () => { selectedTopic = ''; filter.querySelectorAll('.topic-chip').forEach(x => x.classList.remove('active')); all.classList.add('active'); draw(list); };
+    filter.appendChild(all);
+    topics.forEach(topic => {
+      const chip = document.createElement('button'); chip.className = 'topic-chip'; chip.textContent = topic;
+      chip.onclick = () => { selectedTopic = topic; filter.querySelectorAll('.topic-chip').forEach(x => x.classList.remove('active')); chip.classList.add('active'); draw(list.filter(q => (q.topic || 'General') === selectedTopic)); };
+      filter.appendChild(chip);
+    });
+  }
+  draw(list);
 }
 
+async function loadLiveQuizzes() {
+  const wrap = $('liveCards'); if (!wrap || !loggedPlayer || !playerToken) return;
+  try { const data = await api('/live/active'); renderLiveCards(data.quizzes || []); } catch (e) { renderLiveCards([]); }
+}
+function renderLiveCards(quizzes) {
+  const wrap = $('liveCards'); if (!wrap) return;
+  wrap.innerHTML = '';
+  if (!quizzes.length) { wrap.innerHTML = '<div class="live-empty">No live quiz right now. Check back soon.</div>'; return; }
+  quizzes.forEach(q => {
+    const card = document.createElement('article'); card.className = 'live-player-card';
+    card.innerHTML = `<div class="live-player-top"><span>🔴 LIVE NOW</span><strong></strong></div><p></p><h3></h3><div class="live-player-meta"><span>${q.questions.length} Questions</span><span>${q.time} Minutes</span></div><button>Join Live Quiz →</button>`;
+    card.querySelector('strong').textContent = q.subject || 'General'; card.querySelector('p').textContent = `Topic: ${q.topic || 'General'}`; card.querySelector('h3').textContent = q.title;
+    card.querySelector('button').onclick = () => { quizSelect.value = q._id; startQuiz(); };
+    wrap.appendChild(card);
+  });
+}
 
 async function startQuiz() {
   if (!loggedPlayer || !playerToken) { accountPanel.classList.remove('hidden'); return playerMessage('Please register or login before attempting a quiz.', true); }
@@ -292,7 +437,7 @@ warningOkBtn.addEventListener('click', () => { warningOpen = false; warningModal
 
 ['contextmenu','copy','cut','paste'].forEach(type => document.addEventListener(type, e => { if (quizStarted) e.preventDefault(); }));
 
-document.querySelectorAll('.player-nav-btn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.player-nav-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const view=btn.dataset.view;if(view==='live'){document.getElementById('livePreview')?.scrollIntoView({behavior:'smooth'});loadLiveQuizzes();}else if(view==='subjects'){document.getElementById('subjectGrid')?.scrollIntoView({behavior:'smooth'});}else{window.scrollTo({top:0,behavior:'smooth'});}}));
+document.querySelectorAll('.player-nav-btn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.player-nav-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const view=btn.dataset.view;if(!loggedPlayer||!playerToken){document.getElementById('authGate')?.scrollIntoView({behavior:'smooth',block:'center'});if($('accountMessage'))$('accountMessage').textContent='Please register or login first to open the quiz section.';return;}if(view==='live'){document.getElementById('livePreview')?.scrollIntoView({behavior:'smooth'});loadLiveQuizzes();}else if(view==='subjects'){document.getElementById('subjectGrid')?.scrollIntoView({behavior:'smooth'});}else{document.getElementById('quizHubContent')?.scrollIntoView({top:0,behavior:'smooth'});}}));
 $('refreshLiveBtn')?.addEventListener('click',loadLiveQuizzes);
 setInterval(()=>{if(!quizStarted)loadLiveQuizzes();},10000);
 loadQuizList();

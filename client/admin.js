@@ -136,6 +136,7 @@ function addQuestion() {
 
 function renderQuestions() {
   $('questionCount').textContent = questions.length;
+  if ($('editorQuestionCount')) $('editorQuestionCount').textContent = questions.length;
   $('questionList').innerHTML = questions.length ? '' : '<div class="empty-state">No questions added yet.</div>';
   questions.forEach((q, index) => {
     const item = document.createElement('div'); item.className = 'question-item';
@@ -314,22 +315,25 @@ const sectionMeta = {
   leaderboardSection: ['Leaderboard','Top performers by quiz or across the platform.'],
   usersSection: ['Users','Manage registered students and accounts.']
 };
+function openEditorPanel(panelId){
+  if (!panelId) return;
+  document.querySelectorAll('.editor-panel').forEach(p=>p.classList.toggle('active-editor-panel', p.id===panelId));
+  document.querySelectorAll('.editor-menu-item').forEach(b=>b.classList.toggle('active', b.dataset.editorPanel===panelId));
+  const active=document.getElementById(panelId);
+  if (active) active.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
 function openAdminSection(id, focusPdf = false){
   document.querySelectorAll('.admin-section').forEach(s=>s.classList.toggle('active-section',s.id===id));
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.section===id));
   const meta=sectionMeta[id]||['Dashboard','Overview of your quiz platform.'];
   $('pageTitle').textContent=meta[0]; $('pageSubtitle').textContent=meta[1];
-  if (id === 'createSection' && focusPdf) {
-    setTimeout(() => {
-      const box = $('pdfImportBox');
-      if (box) {
-        box.scrollIntoView({behavior:'smooth', block:'start'});
-        box.classList.add('import-focus');
-        setTimeout(() => box.classList.remove('import-focus'), 1800);
-      }
-    }, 80);
+  if (id === 'createSection') {
+    openEditorPanel(focusPdf ? 'pdfPanel' : 'settingsPanel');
   }
 }
+
+document.querySelectorAll('.editor-menu-item').forEach(btn=>btn.addEventListener('click',()=>openEditorPanel(btn.dataset.editorPanel)));
 
 document.querySelectorAll('.nav-item,[data-go]').forEach(el=>el.addEventListener('click',()=>{
   const id=el.dataset.section||el.dataset.go;
@@ -351,6 +355,7 @@ document.querySelectorAll('.nav-item,[data-go]').forEach(el=>el.addEventListener
 
 function renderQuestions() {
   $('questionCount').textContent = questions.length;
+  if ($('editorQuestionCount')) $('editorQuestionCount').textContent = questions.length;
   $('questionList').innerHTML = questions.length ? '' : '<div class="empty-state">No questions added yet.</div>';
   questions.forEach((q, index) => {
     const item = document.createElement('div');
@@ -500,7 +505,7 @@ function startInlineQuestionEdit(index) {
 function startQuestionEdit(index){
   const q=questions[index]; editingQuestionIndex=index; $('questionEditorHeading').textContent=`Edit Question ${index+1}`;
   $('questionInput').value=q.question; ['A','B','C','D'].forEach((l,i)=>$(`option${l}`).value=q.options[i]||''); $('correctAnswer').value=String(q.answer);
-  $('addQuestionBtn').textContent='✓ Update Question'; $('cancelQuestionEditBtn').classList.remove('hidden'); openAdminSection('createSection');
+  $('addQuestionBtn').textContent='✓ Update Question'; $('cancelQuestionEditBtn').classList.remove('hidden'); openAdminSection('createSection'); openEditorPanel('questionPanel');
 }
 function cancelQuestionEdit(){editingQuestionIndex=-1;$('questionEditorHeading').textContent='Add Question';$('addQuestionBtn').textContent='＋ Add Question';$('cancelQuestionEditBtn').classList.add('hidden');['questionInput','optionA','optionB','optionC','optionD'].forEach(id=>$(id).value='');$('correctAnswer').value='0';}
 $('cancelQuestionEditBtn').addEventListener('click',cancelQuestionEdit);
@@ -571,7 +576,7 @@ $('addQuestionBtn').addEventListener('click',()=>{
   if(editingQuestionIndex>=0) questions[editingQuestionIndex]={question,options,answer}; else questions.push({question,options,answer});
   renderQuestions(); cancelQuestionEdit(); $('questionInput').focus();
 });
-$('newQuizBtn').addEventListener('click',()=>{resetEditor();openAdminSection('createSection');});
+$('newQuizBtn').addEventListener('click',()=>{resetEditor();openAdminSection('createSection');openEditorPanel('settingsPanel');});
 
 async function showAttemptDetails(id){
   try{

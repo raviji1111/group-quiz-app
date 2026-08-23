@@ -68,3 +68,12 @@ Browser anti-cheat controls cannot guarantee prevention of all cheating. They sh
 - Added student live score polling while a live quiz is in progress.
 - Added live leaderboard on the result screen when enabled.
 - Preserved existing PDF import, auto answer-key matching, inline question editing and mixed-fraction rendering.
+
+
+## V18
+- Fixed player hub layout so sections stack vertically instead of overlapping.
+- Added a clean registration/login gate before quiz access.
+- Quiz hub is hidden until a player registers or logs in.
+- Added subject/topic browsing chips and cleaner topic-wise quiz cards.
+- Added logout behavior from the player account button.
+- Kept live quiz, live score, leaderboard, PDF import, answer key and mixed-fraction features intact.

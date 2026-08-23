@@ -89,19 +89,53 @@
     </section>
 
     <section id="createSection" class="admin-section">
-      <div class="section-heading"><div><h2 id="editorTitle">Create Quiz</h2><p>Build your quiz and manage its questions.</p></div><button class="secondary-btn" data-go="quizSection">← Back to Quizzes</button></div>
+      <div class="section-heading"><div><h2 id="editorTitle">Create Quiz</h2><p>Use the menu below — each task opens in its own workspace.</p></div><button class="secondary-btn" data-go="quizSection">← Back to Quizzes</button></div>
       <input type="hidden" id="quizId">
-      <section class="admin-card"><h3>Quiz Settings</h3><div class="admin-grid"><div class="form-group"><label>Quiz Name</label><input id="quizTitle" type="text" placeholder="Example: Percentage Mega Test"></div><div class="form-group"><label>Subject</label><input id="quizSubject" type="text" placeholder="Example: Maths"></div><div class="form-group"><label>Topic</label><input id="quizTopic" type="text" placeholder="Example: Percentage"></div><div class="form-group"><label>Time Limit (minutes)</label><input id="quizTime" type="number" value="10" min="1" max="180"></div><div class="form-group"><label>Maximum Violations</label><input id="maxViolations" type="number" value="3" min="1" max="20"></div><div class="form-group"><label>Exam Mode</label><select id="examMode"><option value="on">ON</option><option value="off">OFF</option></select></div><div class="form-group"><label>Join Opens (optional)</label><input id="joinStartAt" type="datetime-local"></div><div class="form-group"><label>Join Closes (optional)</label><input id="joinEndAt" type="datetime-local"></div><div class="form-group"><label>Quiz Starts (optional)</label><input id="scheduledStartAt" type="datetime-local"></div></div><p class="card-muted">If you set a join window and start time, only students who join during the window can enter. After the start time, joining closes automatically and joined students can resume the same attempt after refresh.</p></section>
-      <section class="admin-card live-settings-card"><div class="section-header"><div><span class="card-eyebrow">LIVE CONTROL</span><h3>🔴 Live Quiz Settings</h3><p class="card-muted">Start this quiz live whenever you are ready. Students can see the live room and, if enabled, the live score and leaderboard.</p></div></div><div class="admin-grid"><div class="form-group"><label>Live Duration (minutes)</label><input id="liveDuration" type="number" value="30" min="1" max="180"></div><div class="form-group"><label>Live Score</label><select id="showLiveScore"><option value="on">Show to students</option><option value="off">Hide</option></select></div><div class="form-group"><label>Live Leaderboard</label><select id="showLeaderboard"><option value="on">Show to students</option><option value="off">Hide</option></select></div></div></section>
-      <section class="admin-card"><div class="section-header"><div><h3 id="questionEditorHeading">Add Question</h3><p class="card-muted">Create or edit a question.</p></div></div>
-      <div id="pdfImportBox" class="bulk-import-box pdf-import-box">
-        <div class="section-header"><div><span class="card-eyebrow">FAST IMPORT</span><h3>📄 PDF → Quiz</h3><p class="card-muted">Upload the question PDF. The importer detects A/B/C/D options and can apply an answer key automatically.</p></div><span class="import-badge">AUTO</span></div>
-        <input id="pdfQuestionFile" type="file" accept="application/pdf">
-        <div class="form-group compact import-key-field"><label>Answer Key (optional)</label><input id="pdfAnswerKey" placeholder="Example: 1(b) 2(a) 3(b) 4(c) 5(c) ..."><small>Leave blank if the PDF contains a readable answer key. You can edit any detected answer later.</small></div>
-        <div class="form-actions"><button id="parsePdfBtn" type="button">⚡ Read PDF & Auto Answers</button></div>
-        <p id="pdfMessage" class="admin-message"></p>
-      </div><div class="form-group"><label>Question</label><textarea id="questionInput" rows="3" placeholder="Enter your question..."></textarea></div>
-      <div class="bulk-import-box"><div class="section-header"><div><h3>📋 Bulk Paste Questions</h3><p class="card-muted">Paste multiple questions together. Then select the correct answer for each one.</p></div></div><textarea id="bulkQuestionsInput" rows="10" placeholder="1. What is the capital of Bihar?
+
+      <div class="editor-workspace">
+        <aside class="editor-menu" aria-label="Quiz editor menu">
+          <div class="editor-menu-title">QUIZ BUILDER</div>
+          <button class="editor-menu-item active" data-editor-panel="settingsPanel"><span>⚙️</span><div><strong>Quiz Settings</strong><small>Name, subject & topic</small></div></button>
+          <button class="editor-menu-item" data-editor-panel="pdfPanel"><span>📄</span><div><strong>PDF → Quiz</strong><small>Import questions & answers</small></div></button>
+          <button class="editor-menu-item" data-editor-panel="bulkPanel"><span>📋</span><div><strong>Bulk Paste</strong><small>Paste many questions</small></div></button>
+          <button class="editor-menu-item" data-editor-panel="questionPanel"><span>✏️</span><div><strong>Add Question</strong><small>Create or edit one</small></div></button>
+          <button class="editor-menu-item" data-editor-panel="questionsPanel"><span>🧮</span><div><strong>Questions</strong><small>Review & edit all</small><b id="editorQuestionCount">0</b></div></button>
+          <button class="editor-menu-item" data-editor-panel="liveSettingsPanel"><span>🔴</span><div><strong>Live Settings</strong><small>Score & leaderboard</small></div></button>
+          <div class="editor-menu-help">💡 You can switch between sections without scrolling through the whole builder.</div>
+        </aside>
+
+        <div class="editor-panels">
+          <section id="settingsPanel" class="editor-panel active-editor-panel">
+            <div class="admin-card"><div class="section-header"><div><span class="card-eyebrow">STEP 1</span><h3>Quiz Settings</h3><p class="card-muted">Basic information for the quiz.</p></div></div>
+              <div class="admin-grid">
+                <div class="form-group"><label>Quiz Name</label><input id="quizTitle" type="text" placeholder="Example: Percentage Mega Test"></div>
+                <div class="form-group"><label>Subject</label><input id="quizSubject" type="text" placeholder="Example: Maths"></div>
+                <div class="form-group"><label>Topic</label><input id="quizTopic" type="text" placeholder="Example: Percentage"></div>
+                <div class="form-group"><label>Time Limit (minutes)</label><input id="quizTime" type="number" value="10" min="1" max="180"></div>
+                <div class="form-group"><label>Maximum Violations</label><input id="maxViolations" type="number" value="3" min="1" max="20"></div>
+                <div class="form-group"><label>Exam Mode</label><select id="examMode"><option value="on">ON</option><option value="off">OFF</option></select></div>
+                <div class="form-group"><label>Join Opens (optional)</label><input id="joinStartAt" type="datetime-local"></div>
+                <div class="form-group"><label>Join Closes (optional)</label><input id="joinEndAt" type="datetime-local"></div>
+                <div class="form-group"><label>Quiz Starts (optional)</label><input id="scheduledStartAt" type="datetime-local"></div>
+              </div>
+              <p class="card-muted">Subject and Topic are manual so you can create any structure you want, for example Maths → Percentage or Maths → Number System.</p>
+            </div>
+          </section>
+
+          <section id="pdfPanel" class="editor-panel">
+            <div id="pdfImportBox" class="admin-card bulk-import-box pdf-import-box">
+              <div class="section-header"><div><span class="card-eyebrow">FAST IMPORT</span><h3>📄 PDF → Quiz</h3><p class="card-muted">Upload the question PDF. The importer detects A/B/C/D options and can apply an answer key automatically.</p></div><span class="import-badge">AUTO</span></div>
+              <input id="pdfQuestionFile" type="file" accept="application/pdf">
+              <div class="form-group compact import-key-field"><label>Answer Key (optional)</label><input id="pdfAnswerKey" placeholder="Example: 1(b) 2(a) 3(b) 4(c) 5(c) ..."><small>Leave blank if the PDF contains a readable answer key. You can edit any detected answer later.</small></div>
+              <div class="form-actions"><button id="parsePdfBtn" type="button">⚡ Read PDF & Auto Answers</button></div>
+              <p id="pdfMessage" class="admin-message"></p>
+            </div>
+          </section>
+
+          <section id="bulkPanel" class="editor-panel">
+            <div class="admin-card bulk-import-box">
+              <div class="section-header"><div><span class="card-eyebrow">FAST ENTRY</span><h3>📋 Bulk Paste Questions</h3><p class="card-muted">Paste multiple questions together. Then select the correct answer for each one.</p></div></div>
+              <textarea id="bulkQuestionsInput" rows="16" placeholder="1. What is the capital of Bihar?
 A. Gaya
 B. Patna
 C. Ranchi
@@ -111,9 +145,40 @@ D. Delhi
 A. ...
 B. ...
 C. ...
-D. ..."></textarea><div class="form-actions"><button id="parseBulkBtn" type="button">＋ Parse & Add Questions</button><button id="clearBulkBtn" type="button" class="secondary-btn">Clear</button></div><p id="bulkMessage" class="admin-message"></p></div><div class="admin-grid"><div class="form-group"><label>Option A</label><input id="optionA"></div><div class="form-group"><label>Option B</label><input id="optionB"></div><div class="form-group"><label>Option C</label><input id="optionC"></div><div class="form-group"><label>Option D</label><input id="optionD"></div></div><div class="form-actions"><div class="form-group compact"><label>Correct Answer</label><select id="correctAnswer"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select></div><button id="addQuestionBtn">＋ Add Question</button><button id="cancelQuestionEditBtn" class="secondary-btn hidden">Cancel Edit</button></div></section>
-      <section class="admin-card"><div class="section-header"><h3>Questions <span id="questionCount" class="count-badge">0</span></h3><button id="clearQuestionsBtn" class="danger-btn">Clear All</button></div><div id="questionList"></div></section>
-      <section class="save-bar"><p id="adminMessage" class="admin-message"></p><button id="previewQuizBtn" class="secondary-btn">Preview</button><button id="saveQuizBtn">Save Quiz</button></section>
+D. ..."></textarea>
+              <div class="form-actions"><button id="parseBulkBtn" type="button">＋ Parse & Add Questions</button><button id="clearBulkBtn" type="button" class="secondary-btn">Clear</button></div>
+              <p id="bulkMessage" class="admin-message"></p>
+            </div>
+          </section>
+
+          <section id="questionPanel" class="editor-panel">
+            <div class="admin-card">
+              <div class="section-header"><div><span class="card-eyebrow">QUESTION ENTRY</span><h3 id="questionEditorHeading">Add Question</h3><p class="card-muted">Create or edit one question. The visible preview keeps maths/fractions formatted.</p></div></div>
+              <div class="form-group"><label>Question</label><textarea id="questionInput" rows="5" placeholder="Enter your question..."></textarea></div>
+              <div class="admin-grid">
+                <div class="form-group"><label>Option A</label><input id="optionA"></div>
+                <div class="form-group"><label>Option B</label><input id="optionB"></div>
+                <div class="form-group"><label>Option C</label><input id="optionC"></div>
+                <div class="form-group"><label>Option D</label><input id="optionD"></div>
+              </div>
+              <div class="form-actions"><div class="form-group compact"><label>Correct Answer</label><select id="correctAnswer"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select></div><button id="addQuestionBtn">＋ Add Question</button><button id="cancelQuestionEditBtn" class="secondary-btn hidden">Cancel Edit</button></div>
+            </div>
+          </section>
+
+          <section id="questionsPanel" class="editor-panel">
+            <div class="admin-card questions-workspace-card"><div class="section-header"><div><span class="card-eyebrow">QUESTION BANK</span><h3>Questions <span id="questionCount" class="count-badge">0</span></h3><p class="card-muted">Review, edit or delete questions without leaving this section.</p></div><button id="clearQuestionsBtn" class="danger-btn">Clear All</button></div><div id="questionList"></div></div>
+          </section>
+
+          <section id="liveSettingsPanel" class="editor-panel">
+            <div class="admin-card live-settings-card"><div class="section-header"><div><span class="card-eyebrow">LIVE CONTROL</span><h3>🔴 Live Quiz Settings</h3><p class="card-muted">Configure what students see when you start this quiz as a live test.</p></div></div>
+              <div class="admin-grid"><div class="form-group"><label>Live Duration (minutes)</label><input id="liveDuration" type="number" value="30" min="1" max="180"></div><div class="form-group"><label>Live Score</label><select id="showLiveScore"><option value="on">Show to students</option><option value="off">Hide</option></select></div><div class="form-group"><label>Live Leaderboard</label><select id="showLeaderboard"><option value="on">Show to students</option><option value="off">Hide</option></select></div></div>
+              <div class="live-settings-tip"><strong>Tip:</strong> Save the quiz first. You can then start and monitor it from <b>Live Quiz</b> in the main admin menu.</div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <section class="save-bar editor-save-bar"><p id="adminMessage" class="admin-message"></p><button id="previewQuizBtn" class="secondary-btn">Preview</button><button id="saveQuizBtn">Save Quiz</button></section>
     </section>
 
     <section id="resultsSection" class="admin-section">

@@ -13,14 +13,29 @@
 
 <main class="player-main">
 <section id="startScreen" class="screen active">
-  <div class="player-hero"><div><span class="hero-kicker">QUIZ HUB</span><h1>Challenge yourself.<br><em>One question at a time.</em></h1><p>Choose a subject, pick a topic and start a focused practice test.</p></div><div class="hero-badge">✦<span>Classy<br>Quiz Experience</span></div></div>
-  <section class="subject-section"><div class="player-section-head"><div><span class="card-eyebrow">EXPLORE</span><h2>Subjects</h2></div><p>Browse topic-wise quizzes</p></div><div id="subjectGrid" class="subject-grid"></div></section>
-  <section id="quizCatalog" class="catalog-section"><div class="player-section-head"><div><span class="card-eyebrow">QUIZZES</span><h2 id="catalogTitle">All Quizzes</h2></div><select id="quizSelect" class="player-select"><option value="">Loading quizzes...</option></select></div><div id="quizCards" class="quiz-card-grid"></div></section>
-  <section id="livePreview" class="live-preview-section"><div class="player-section-head"><div><span class="card-eyebrow live-eyebrow">LIVE NOW</span><h2>Live Quiz</h2></div><button id="refreshLiveBtn" class="secondary-btn">↻ Refresh</button></div><div id="liveCards" class="live-card-grid"></div></section>
-  <div class="account-bar"><span id="accountStatusMirror">Please register or login to attempt quizzes.</span><button id="startBtn">Start Selected Quiz</button></div>
-  <input id="playerName" type="text" maxlength="30" readonly class="hidden-input">
-  <p id="playerMessage" class="admin-message"></p>
-  <div id="accountPanel" class="account-panel hidden"><div class="account-panel-head"><div><span class="card-eyebrow">YOUR ACCOUNT</span><h3>Welcome to Group Quiz</h3></div></div><input id="accountName" type="text" placeholder="Full name" maxlength="30"><input id="accountEmail" type="email" placeholder="Email"><input id="accountPassword" type="password" placeholder="Password (6+ characters)"><div class="account-actions"><button id="registerBtn">Create Account</button><button id="loginAccountBtn" class="secondary-btn">Login</button></div><p id="accountMessage" class="admin-message"></p></div>
+  <section id="authGate" class="auth-gate">
+    <div class="auth-hero">
+      <div class="auth-copy"><span class="hero-kicker">GROUP QUIZ</span><h1>Learn. Practice.<br><em>Perform better.</em></h1><p>Create your free account first. After registration or login, your complete quiz hub, subjects, topics and live tests will appear here.</p><div class="auth-points"><span>✓ Topic-wise quizzes</span><span>✓ Live tests & leaderboard</span><span>✓ Instant results</span></div></div>
+      <div class="auth-card">
+        <span class="card-eyebrow">GET STARTED</span><h2>Register to continue</h2><p class="auth-note">Already have an account? Login below.</p>
+        <input id="accountName" type="text" placeholder="Full name" maxlength="30" autocomplete="name">
+        <input id="accountEmail" type="email" placeholder="Email address" autocomplete="email">
+        <input id="accountPassword" type="password" placeholder="Password (6+ characters)" autocomplete="new-password">
+        <div class="account-actions"><button id="registerBtn">Create Account</button><button id="loginAccountBtn" class="secondary-btn">Login</button></div>
+        <p id="accountMessage" class="admin-message"></p>
+      </div>
+    </div>
+  </section>
+
+  <div id="quizHubContent" class="quiz-hub-content hidden">
+    <div class="player-hero"><div><span class="hero-kicker">QUIZ HUB</span><h1>Welcome back,<br><em>keep learning.</em></h1><p>Choose a subject, open a topic and start a focused practice test.</p></div><div class="hero-badge">✦<span>Classy<br>Quiz Experience</span></div></div>
+    <section class="subject-section"><div class="player-section-head"><div><span class="card-eyebrow">EXPLORE</span><h2>Subjects</h2></div><p>Choose a subject to see its topics</p></div><div id="subjectGrid" class="subject-grid"></div></section>
+    <section id="quizCatalog" class="catalog-section"><div class="player-section-head"><div><span class="card-eyebrow">QUIZZES</span><h2 id="catalogTitle">All Quizzes</h2></div><select id="quizSelect" class="player-select"><option value="">Loading quizzes...</option></select></div><div id="topicFilter" class="topic-filter"></div><div id="quizCards" class="quiz-card-grid"></div></section>
+    <section id="livePreview" class="live-preview-section"><div class="player-section-head"><div><span class="card-eyebrow live-eyebrow">LIVE NOW</span><h2>Live Quiz</h2></div><button id="refreshLiveBtn" class="secondary-btn">↻ Refresh</button></div><div id="liveCards" class="live-card-grid"></div></section>
+    <div class="account-bar"><span id="accountStatusMirror">Signed in.</span><button id="startBtn">Start Selected Quiz</button></div>
+    <input id="playerName" type="text" maxlength="30" readonly class="hidden-input">
+    <p id="playerMessage" class="admin-message"></p>
+  </div>
 </section>
 
 <section id="quizScreen" class="screen"><div class="quiz-container classy-quiz"><div class="quiz-top"><div><span class="quiz-kicker">QUIZ IN PROGRESS</span><div>Question <span id="questionNumber">1</span> / <span id="totalQuestions">0</span></div></div><div id="timer">00:00</div></div><div class="progress-container"><div id="progressBar"></div></div><div class="question-box"><div class="question-meta"><span id="quizSubjectBadge"></span><span id="quizTopicBadge"></span></div><h2 id="questionText">Question</h2></div><div id="optionsContainer" class="options"></div><button id="nextBtn" class="next-btn" disabled>Next</button><div id="violationBox" class="violation-box">Warnings: <span id="violationCount">0</span> / <span id="maxViolations">3</span></div><div id="liveScoreStrip" class="live-score-strip hidden"></div></div></section>

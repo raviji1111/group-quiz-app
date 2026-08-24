@@ -20,6 +20,8 @@ let violationMonitoringReady = false;
 let monitoringTimer = null;
 let waitingTimer = null;
 let liveScoreInterval = null;
+let selectedQuizId = '';
+let selectedQuizIsLive = false;
 const SESSION_STORAGE_KEY = 'groupQuizActiveSession';
 let playerToken = localStorage.getItem('groupQuizPlayerToken') || '';
 let loggedPlayer = JSON.parse(localStorage.getItem('groupQuizPlayer') || 'null');
@@ -206,34 +208,41 @@ async function loadQuizList() {
     setAuthView();
     if (quizSelect) quizSelect.innerHTML = '<option value="">Register / Login to view quizzes</option>';
     if (startBtn) startBtn.disabled = true;
+    selectedQuizId = ''; selectedQuizIsLive = false;
     renderSubjectGrid([]); renderQuizCards([]); renderLiveCards([]);
     return;
   }
   try {
     const { quizzes } = await api('/quizzes/public');
-    if (!quizSelect) return;
-    quizSelect.innerHTML = '';
-    if (!quizzes.length) {
-      quizSelect.innerHTML = '<option value="">No published quizzes</option>';
-      startBtn.disabled = true;
-      renderSubjectGrid([]); renderQuizCards([]); renderLiveCards([]);
-      return;
+    if (quizSelect) {
+      quizSelect.innerHTML = '';
+      if (!quizzes.length) {
+        quizSelect.innerHTML = '<option value="">No published quizzes</option>';
+      } else {
+        quizzes.forEach(q => {
+          const o = document.createElement('option');
+          o.value = q._id;
+          o.textContent = `${q.title} — ${q.questions.length} questions · ${q.time} min`;
+          quizSelect.appendChild(o);
+        });
+        const requested = new URLSearchParams(location.search).get('quiz');
+        if (requested && quizzes.some(q => q._id === requested)) quizSelect.value = requested;
+        selectedQuizId = quizSelect.value || quizzes[0]._id;
+        selectedQuizIsLive = false;
+        startBtn.disabled = false;
+      }
     }
-    quizzes.forEach(q => {
-      const o = document.createElement('option');
-      o.value = q._id;
-      o.textContent = `${q.title} — ${q.questions.length} questions · ${q.time} min`;
-      quizSelect.appendChild(o);
-    });
-    const requested = new URLSearchParams(location.search).get('quiz');
-    if (requested && quizzes.some(q => q._id === requested)) quizSelect.value = requested;
     window.availableQuizzes = quizzes;
     renderSubjectGrid(quizzes);
     renderQuizCards(quizzes);
+    // Live is independent of published quizzes. Always load it, even when
+    // there are zero published quizzes.
     await loadLiveQuizzes();
+    if (!quizzes.length && startBtn) startBtn.disabled = false; // live selection can still start directly
   } catch (e) {
-    quizSelect.innerHTML = '<option value="">Could not load quizzes</option>';
-    startBtn.disabled = true;
+    if (quizSelect) quizSelect.innerHTML = '<option value="">Could not load quizzes</option>';
+    if (startBtn) startBtn.disabled = true;
+    await loadLiveQuizzes();
     playerMessage(e.message, true);
   }
 }
@@ -281,7 +290,7 @@ function renderQuizCards(quizzes, title = 'All Quizzes') {
       card.querySelector('.subject-pill').textContent = q.subject || 'General';
       card.querySelector('h3').textContent = q.title;
       card.querySelector('.catalog-topic').textContent = `Topic: ${q.topic || 'General'}`;
-      card.querySelector('button').onclick = () => { quizSelect.value = q._id; const opt = quizSelect.options[quizSelect.selectedIndex]; if (opt) opt.dataset.live = 'true'; startQuiz(); };
+      card.querySelector('button').onclick = () => { selectedQuizId = q._id; selectedQuizIsLive = false; if (quizSelect) quizSelect.value = q._id; startQuiz(q._id, false); };
       grid.appendChild(card);
     });
     if (!items.length) grid.innerHTML = '<div class="empty-state">No quizzes in this topic yet.</div>';
@@ -311,20 +320,20 @@ function renderLiveCards(quizzes) {
     const card = document.createElement('article'); card.className = 'live-player-card';
     card.innerHTML = `<div class="live-player-top"><span>🔴 LIVE NOW</span><strong></strong></div><p></p><h3></h3><div class="live-player-meta"><span>${q.questions.length} Questions</span><span>${q.time} Minutes</span></div><button>Join Live Quiz →</button>`;
     card.querySelector('strong').textContent = q.subject || 'General'; card.querySelector('p').textContent = `Topic: ${q.topic || 'General'}`; card.querySelector('h3').textContent = q.title;
-    card.querySelector('button').onclick = () => { quizSelect.value = q._id; const opt = quizSelect.options[quizSelect.selectedIndex]; if (opt) opt.dataset.live = 'true'; startQuiz(); };
+    card.querySelector('button').onclick = () => { selectedQuizId = q._id; selectedQuizIsLive = true; startBtn.disabled = false; startQuiz(q._id, true); };
     wrap.appendChild(card);
   });
 }
 
-async function startQuiz() {
+async function startQuiz(forcedQuizId = null, forcedLive = null) {
   if (!loggedPlayer || !playerToken) { accountPanel.classList.remove('hidden'); return playerMessage('Please register or login before attempting a quiz.', true); }
   playerName = loggedPlayer.name;
-  const quizId = quizSelect.value;
+  const quizId = forcedQuizId || selectedQuizId || quizSelect?.value;
+  const isLiveSelection = forcedLive !== null ? Boolean(forcedLive) : Boolean(selectedQuizIsLive);
   if (!playerName) return playerMessage('Please enter your name.', true);
   if (!quizId) return playerMessage('Please select a quiz.', true);
   try {
     startBtn.disabled = true;
-    const isLiveSelection = !!document.querySelector('.live-player-card') && quizSelect.value === quizId && quizSelect.options[quizSelect.selectedIndex]?.dataset?.live === 'true';
     const data = isLiveSelection ? await api(`/live/${quizId}/public`) : await api(`/quizzes/${quizId}/public`);
     quiz = data.quiz;
     const session = await api('/attempts/start', { method: 'POST', body: JSON.stringify({ quizId, playerName, live: isLiveSelection }) });
@@ -392,7 +401,8 @@ async function resumeStoredSession() {
   }
 }
 
-startBtn.addEventListener('click', startQuiz);
+quizSelect?.addEventListener('change', () => { selectedQuizId = quizSelect.value; selectedQuizIsLive = false; });
+startBtn.addEventListener('click', () => startQuiz());
 playerNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') startQuiz(); });
 
 function loadQuestion() {

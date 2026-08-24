@@ -440,12 +440,13 @@ async function setupSession(session, quizData) {
 
 function beginActiveQuiz(session) {
   document.getElementById('liveLobby')?.classList.add('hidden');
+  if (quiz?.liveStatus === 'live') { window.__activeLiveQuizId = quiz._id; window.LivePauseResume?.start(quiz._id); }
   quizStarted = true; isFinishing = false; submitting = false; warningOpen = false; violationMonitoringReady = false; if (quiz?.liveStatus === 'live') window.LiveMonitoring?.start(sessionId);
   clearTimeout(monitoringTimer);
   timeLeft = Math.max(0, Math.ceil((new Date(session.expiresAt).getTime() - Date.now()) / 1000));
   if (timeLeft <= 0) return finishQuiz('auto-submitted');
   totalQuestions.textContent = questions.length; resultTotal.textContent = questions.length; violationCount.textContent = violations; maxViolations.textContent = maxQuizViolations; if($('quizSubjectBadge'))$('quizSubjectBadge').textContent=quiz.subject||'General'; if($('quizTopicBadge'))$('quizTopicBadge').textContent=quiz.topic||'General';
-  startScreen.classList.remove('active'); quizScreen.classList.add('active'); resultScreen.classList.remove('active'); loadQuestion(); startTimer(); clearInterval(liveScoreInterval); if(quiz.liveStatus==='live') { showLiveBoard(); liveScoreInterval=setInterval(showLiveBoard,5000); }
+  startScreen.classList.remove('active'); quizScreen.classList.add('active'); resultScreen.classList.remove('active'); loadQuestion(); startTimer(); clearInterval(liveScoreInterval); if(quiz.liveStatus==='live') { (window.showLiveBoard ? window.showLiveBoard() : Promise.resolve()); liveScoreInterval=setInterval(()=>window.showLiveBoard?.(),5000); }
   if (quiz.examMode) {
     requestFullscreen();
     monitoringTimer = setTimeout(() => { violationMonitoringReady = true; }, 2000);
@@ -535,7 +536,7 @@ nextBtn.addEventListener('click', async () => {
   }
 });
 
-function startTimer() { clearInterval(timerInterval); updateTimer(); timerInterval = setInterval(() => { if (!quizStarted) return; timeLeft = Math.max(0, timeLeft - 1); updateTimer(); if (timeLeft <= 0) finishQuiz('auto-submitted'); }, 1000); }
+function startTimer() { clearInterval(timerInterval); updateTimer(); timerInterval = setInterval(() => { if (!quizStarted || window.LivePauseResume?.isPaused) return; timeLeft = Math.max(0, timeLeft - 1); updateTimer(); if (timeLeft <= 0) finishQuiz('auto-submitted'); }, 1000); }
 function updateTimer() { timer.textContent = `${String(Math.floor(timeLeft / 60)).padStart(2, '0')}:${String(timeLeft % 60).padStart(2, '0')}`; }
 
 async function finishQuiz(status = 'completed', manualSubmit = false) {
@@ -547,7 +548,7 @@ async function finishQuiz(status = 'completed', manualSubmit = false) {
     scoreElement.textContent = result.score; resultTotal.textContent = result.total; resultPlayer.textContent = `Player: ${playerName}`;
     const percentage = result.percentage;
     resultMessage.textContent = percentage >= 80 ? 'Excellent performance!' : percentage >= 60 ? 'Good job!' : percentage >= 40 ? 'Keep practicing!' : 'Keep learning and try again!';
-    quizScreen.classList.remove('active'); resultScreen.classList.add('active'); await showLiveBoard();
+    quizScreen.classList.remove('active'); resultScreen.classList.add('active'); await (window.showLiveBoard ? window.showLiveBoard() : Promise.resolve());
     localStorage.removeItem(SESSION_STORAGE_KEY);
   } catch (e) {
     alert(`Could not submit quiz: ${e.message}`);

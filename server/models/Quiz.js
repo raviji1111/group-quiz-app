@@ -33,6 +33,8 @@ const quizSchema = new mongoose.Schema({
   liveEndsAt: { type: Date, default: null },
   showLiveScore: { type: Boolean, default: true },
   showLeaderboard: { type: Boolean, default: true },
+  livePaused: { type: Boolean, default: false },
+  liveAnnouncement: { type: String, default: '', maxlength: 200 },
   questions: { type: [questionSchema], required: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: true }
 }, { timestamps: true });

@@ -806,6 +806,7 @@ $('startDirectLiveBtn')?.addEventListener('click',async()=>{
 /* ===== V17 LIVE CONTROL ===== */
 let liveBoardQuizId = '';
 let liveBoardTimer = null;
+try { Object.defineProperty(window, 'liveBoardQuizId', { configurable: true, get: () => liveBoardQuizId }); } catch(e) {}
 
 async function loadLiveQuizCards() {
   const wrap = $('liveQuizCards'); if (!wrap) return;

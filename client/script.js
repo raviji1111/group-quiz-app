@@ -22,7 +22,6 @@ let waitingTimer = null;
 let liveCardTimer = null;
 let liveLobbyQuiz = null;
 let liveScoreInterval = null;
-let heartbeatInterval = null;
 let selectedQuizId = '';
 let selectedQuizIsLive = false;
 const SESSION_STORAGE_KEY = 'groupQuizActiveSession';
@@ -31,16 +30,9 @@ let loggedPlayer = JSON.parse(localStorage.getItem('groupQuizPlayer') || 'null')
 
 const $ = id => document.getElementById(id);
 
-let connectionRetryTimer = null;
-function updateConnectionState(online) {
-  const banner = $('connectionBanner'); if (!banner) return;
-  banner.classList.remove('hidden');
-  if (online) { banner.classList.add('online'); banner.textContent = '✓ Connection restored. Your quiz will continue.'; clearTimeout(connectionRetryTimer); connectionRetryTimer = setTimeout(() => banner.classList.add('hidden'), 2200); if (quizStarted) saveProgress(); }
-  else { banner.classList.remove('online'); banner.textContent = '⚠ Connection lost. Your current answer stays on this device; reconnecting…'; }
-}
-window.addEventListener('offline', () => updateConnectionState(false));
-window.addEventListener('online', () => updateConnectionState(true));
 
+
+document.addEventListener('live-autosave-status', e => { const el=$('playerMessage'); if(!el) return; const map={saving:'Saving answer…',saved:'✓ Answer saved',pending:'⚠ Answer pending — will retry automatically.'}; el.textContent=map[e.detail?.status]||''; el.classList.toggle('error',e.detail?.status==='pending'); });
 
 function escapeHtml(v) {
   return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -429,7 +421,7 @@ async function setupSession(session, quizData) {
     document.getElementById('liveLobby')?.classList.remove('hidden');
     startBtn.disabled = true;
     if ($('liveLobbyTitle')) $('liveLobbyTitle').textContent = quiz.title || 'Live Quiz';
-    if ($('liveLobbyMeta')) $('liveLobbyMeta').textContent = 'You joined the LIVE. Please wait and attend the LIVE; the quiz will start automatically.';
+    if ($('liveLobbyMeta')) $('liveLobbyMeta').textContent = 'You have joined successfully. The quiz will start automatically.';
     if ($('liveLobbyQuestions')) $('liveLobbyQuestions').textContent = questions.length;
     if ($('liveLobbyStartAt')) $('liveLobbyStartAt').textContent = new Date(startAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
     if ($('liveLobbyEndAt')) $('liveLobbyEndAt').textContent = new Date(session.expiresAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
@@ -437,7 +429,7 @@ async function setupSession(session, quizData) {
       const remaining = Math.max(0, startAt - Date.now());
       if (remaining <= 0) { startBtn.disabled = false; document.getElementById('liveLobby')?.classList.add('hidden'); beginActiveQuiz(session); return; }
       if ($('liveLobbyCountdown')) $('liveLobbyCountdown').textContent = formatCountdown(remaining);
-      if ($('liveLobbyMessage')) $('liveLobbyMessage').textContent = `You joined the LIVE. Please wait and attend the LIVE. Quiz starts automatically in ${formatCountdown(remaining)}.`;
+      if ($('liveLobbyMessage')) $('liveLobbyMessage').textContent = `Quiz starts automatically in ${formatCountdown(remaining)}. Do not refresh the page.`;
       waitingTimer = setTimeout(tick, 1000);
     };
     tick();
@@ -448,12 +440,12 @@ async function setupSession(session, quizData) {
 
 function beginActiveQuiz(session) {
   document.getElementById('liveLobby')?.classList.add('hidden');
-  quizStarted = true; isFinishing = false; submitting = false; warningOpen = false; violationMonitoringReady = false;
+  quizStarted = true; isFinishing = false; submitting = false; warningOpen = false; violationMonitoringReady = false; if (quiz?.liveStatus === 'live') window.LiveMonitoring?.start(sessionId);
   clearTimeout(monitoringTimer);
   timeLeft = Math.max(0, Math.ceil((new Date(session.expiresAt).getTime() - Date.now()) / 1000));
   if (timeLeft <= 0) return finishQuiz('auto-submitted');
   totalQuestions.textContent = questions.length; resultTotal.textContent = questions.length; violationCount.textContent = violations; maxViolations.textContent = maxQuizViolations; if($('quizSubjectBadge'))$('quizSubjectBadge').textContent=quiz.subject||'General'; if($('quizTopicBadge'))$('quizTopicBadge').textContent=quiz.topic||'General';
-  startScreen.classList.remove('active'); quizScreen.classList.add('active'); resultScreen.classList.remove('active'); loadQuestion(); startTimer(); clearInterval(heartbeatInterval); heartbeatInterval = setInterval(() => { if (quizStarted) saveProgress(); }, 10000); clearInterval(liveScoreInterval); if(quiz.liveStatus==='live') { showLiveBoard(); liveScoreInterval=setInterval(showLiveBoard,5000); }
+  startScreen.classList.remove('active'); quizScreen.classList.add('active'); resultScreen.classList.remove('active'); loadQuestion(); startTimer(); clearInterval(liveScoreInterval); if(quiz.liveStatus==='live') { showLiveBoard(); liveScoreInterval=setInterval(showLiveBoard,5000); }
   if (quiz.examMode) {
     requestFullscreen();
     monitoringTimer = setTimeout(() => { violationMonitoringReady = true; }, 2000);
@@ -500,16 +492,14 @@ function loadQuestion() {
 }
 function selectAnswer(index) {
   if (!quizStarted) return;
-  selectedAnswer = index; answers[currentQuestion] = index;
+  selectedAnswer = index; answers[currentQuestion] = index; if (quiz?.liveStatus === 'live') saveProgress();
   document.querySelectorAll('.option').forEach((b, i) => b.classList.toggle('selected', i === index));
   nextBtn.disabled = false;
   saveProgress();
 }
 async function saveProgress() {
-  if (!sessionId || !quizStarted) return false;
-  const status = $('saveStatus'); if (status) { status.textContent = 'Saving…'; status.className = 'save-status saving'; }
-  try { await api(`/attempts/session/${encodeURIComponent(sessionId)}/progress`, { method: 'PATCH', body: JSON.stringify({ currentQuestion, answers, violations, violationReasons }) }); if (status) { status.textContent = '✓ Answer saved'; status.className = 'save-status saved'; } return true; }
-  catch (e) { if (status) { status.textContent = '⚠ Save pending — retrying'; status.className = 'save-status error'; } return false; }
+  if (!sessionId || !quizStarted) return;
+  try { await api(`/attempts/session/${encodeURIComponent(sessionId)}/progress`, { method: 'PATCH', body: JSON.stringify({ currentQuestion, answers, violations, violationReasons }) }); } catch (e) {}
 }
 
 nextBtn.addEventListener('click', async () => { if (selectedAnswer === null) return; if (currentQuestion >= questions.length - 1) finishQuiz(); else { currentQuestion++; loadQuestion(); await saveProgress(); } });
@@ -519,14 +509,14 @@ function updateTimer() { timer.textContent = `${String(Math.floor(timeLeft / 60)
 
 async function finishQuiz(status = 'completed') {
   if (!quizStarted || !violationMonitoringReady || isFinishing || submitting) return;
-  isFinishing = true; quizStarted = false; violationMonitoringReady = false; clearTimeout(monitoringTimer); clearInterval(timerInterval); clearInterval(liveScoreInterval); submitting = true;
+  isFinishing = true; quizStarted = false; violationMonitoringReady = false; clearTimeout(monitoringTimer); clearInterval(timerInterval); clearInterval(liveScoreInterval); window.LiveMonitoring?.stop(); submitting = true;
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   try {
     const result = await api('/attempts', { method: 'POST', body: JSON.stringify({ sessionId, answers, violations, violationReasons, status }) });
     scoreElement.textContent = result.score; resultTotal.textContent = result.total; resultPlayer.textContent = `Player: ${playerName}`;
     const percentage = result.percentage;
     resultMessage.textContent = percentage >= 80 ? 'Excellent performance!' : percentage >= 60 ? 'Good job!' : percentage >= 40 ? 'Keep practicing!' : 'Keep learning and try again!';
-    quizScreen.classList.remove('active'); resultScreen.classList.add('active'); clearInterval(heartbeatInterval); await showLiveBoard();
+    quizScreen.classList.remove('active'); resultScreen.classList.add('active'); await showLiveBoard();
     localStorage.removeItem(SESSION_STORAGE_KEY);
   } catch (e) {
     alert(`Could not submit quiz: ${e.message}`);

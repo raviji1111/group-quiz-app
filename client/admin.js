@@ -241,7 +241,7 @@ async function loadStatsAndHistory(quizId = $('attemptQuizFilter')?.value || '')
     const body = $('historyBody'); body.innerHTML = '';
     $('historyTitle').textContent = quizId ? `Attempts — ${$('attemptQuizFilter').selectedOptions[0]?.textContent || 'Quiz'}` : 'Quiz Attempts';
     if (!history.attempts.length) {
-      body.innerHTML = '<tr><td colspan="7">No attempts found for this quiz.</td></tr>';
+      body.innerHTML = '<tr><td colspan="6">No attempts found for this quiz.</td></tr>';
       return;
     }
     history.attempts.forEach(a => {
@@ -297,7 +297,7 @@ async function loadLeaderboard(quizId = $('leaderboardQuizFilter')?.value || '')
   const leaderboardHeading = $('leaderboardTitle') || $('pageTitle');
   if (leaderboardHeading) leaderboardHeading.textContent = quizId ? `Leaderboard — ${$('leaderboardQuizFilter').selectedOptions[0]?.textContent || 'Quiz'}` : 'Leaderboard';
   const body = $('leaderboardBody'); body.innerHTML = '';
-  if (!data.leaderboard.length) { body.innerHTML = '<tr><td colspan="7">No attempts found.</td></tr>'; return; }
+  if (!data.leaderboard.length) { body.innerHTML = '<tr><td colspan="5">No attempts found.</td></tr>'; return; }
   data.leaderboard.forEach(r => { const tr = document.createElement('tr'); [r.rank, r.playerName, r.attempts, `${r.bestScore}%`, `${r.avgScore}%`].forEach(v => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); }); body.appendChild(tr); });
 }
 
@@ -651,7 +651,7 @@ const oldLoadQuizzes=loadQuizzes;
 loadQuizzes=async function(){await oldLoadQuizzes();};
 const oldLoadAll=loadAll;
 loadAll=async function(){await oldLoadAll();openAdminSection('dashboardSection');loadRecentAttempts();};
-async function loadRecentAttempts(){try{const d=await api('/attempts');const body=$('recentBody');body.innerHTML='';(d.attempts||[]).slice(0,8).forEach(a=>{const tr=document.createElement('tr');[a.playerName,a.quiz?.title||'Deleted quiz',`${a.score}/${a.total} (${a.percentage}%)`,a.status,new Date(a.createdAt).toLocaleString()].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td)});body.appendChild(tr)});if(!d.attempts?.length)body.innerHTML='<tr><td colspan="7">No attempts yet.</td></tr>'}catch(e){}}
+async function loadRecentAttempts(){try{const d=await api('/attempts');const body=$('recentBody');body.innerHTML='';(d.attempts||[]).slice(0,8).forEach(a=>{const tr=document.createElement('tr');[a.playerName,a.quiz?.title||'Deleted quiz',`${a.score}/${a.total} (${a.percentage}%)`,a.status,new Date(a.createdAt).toLocaleString()].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td)});body.appendChild(tr)});if(!d.attempts?.length)body.innerHTML='<tr><td colspan="5">No attempts yet.</td></tr>'}catch(e){}}
 
 
 /* ===== PDF import controls ===== */
@@ -746,7 +746,7 @@ async function loadLegacyUsers() {
     const body = $('legacyUsersBody');
     if (!body) return;
     body.innerHTML = '';
-    if (!data.players?.length) { body.innerHTML = '<tr><td colspan="7">No legacy / guest players found.</td></tr>'; return; }
+    if (!data.players?.length) { body.innerHTML = '<tr><td colspan="5">No legacy / guest players found.</td></tr>'; return; }
     data.players.forEach(p => {
       const tr = document.createElement('tr');
       [p.name, p.attempts, new Date(p.lastAttempt).toLocaleString(), p.blocked ? 'Suspended' : 'Active'].forEach(v => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
@@ -850,8 +850,8 @@ async function loadLiveBoard(id = liveBoardQuizId) {
     $('liveActive').textContent=data.active;
     $('liveSubmitted').textContent=data.submitted;
     const body=$('liveBoardBody'); body.innerHTML='';
-    if(!data.leaderboard.length){body.innerHTML='<tr><td colspan="7">No participants yet.</td></tr>';return;}
-    data.leaderboard.forEach(r=>{const tr=document.createElement('tr'); [r.rank,r.playerName,`${r.score}/${r.total}`,r.answered,r.connection === 'online' ? '🟢 Online' : r.connection === 'offline' ? '🟠 Offline' : '⚫ Submitted',r.submitted?'Submitted':'Live'].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td);}); if(!r.submitted){const td=document.createElement('td'); const btn=document.createElement('button'); btn.className='small-btn delete-btn'; btn.textContent='Force Submit'; btn.onclick=async()=>{if(!confirm(`Force submit ${r.playerName}?`))return; const rowSession=r.sessionId; if(!rowSession)return; try{await api(`/live/${id}/session/${rowSession}/force-submit`,{method:'POST'}); await loadLiveBoard(id);}catch(e){showMessage(e.message,true);}}; td.appendChild(btn); tr.appendChild(td);} else {const td=document.createElement('td');td.textContent='—';tr.appendChild(td);} body.appendChild(tr);});
+    if(!data.leaderboard.length){body.innerHTML='<tr><td colspan="6">No participants yet.</td></tr>';return;}
+    data.leaderboard.forEach(r=>{const tr=document.createElement('tr'); [r.rank,r.playerName,`${r.score}/${r.total}`,r.answered,r.submitted?'Submitted':'Live'].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td);}); const td=document.createElement('td'); if(!r.submitted){const b=document.createElement('button');b.className='small-btn detail-btn';b.textContent='Force Submit';b.onclick=async()=>{try{await window.LiveAdminControl.forceSubmit(r.sessionId,r.playerName);await loadLiveBoard();}catch(e){showMessage(e.message,true);}};td.appendChild(b);}else td.textContent='—';tr.appendChild(td);body.appendChild(tr);});
   } catch(e) { showMessage(e.message,true); }
 }
 

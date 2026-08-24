@@ -54,12 +54,15 @@
   </div>
 </section>
 
-<section id="quizScreen" class="screen"><div class="quiz-container classy-quiz"><div class="quiz-top"><div><span class="quiz-kicker">QUIZ IN PROGRESS</span><div>Question <span id="questionNumber">1</span> / <span id="totalQuestions">0</span></div></div><div id="timer">00:00</div></div><div class="progress-container"><div id="progressBar"></div></div><div id="saveStatus" class="save-status" aria-live="polite">Ready</div><div class="question-box"><div class="question-meta"><span id="quizSubjectBadge"></span><span id="quizTopicBadge"></span></div><h2 id="questionText">Question</h2></div><div id="optionsContainer" class="options"></div><button id="nextBtn" class="next-btn" disabled>Next</button><div id="violationBox" class="violation-box">Warnings: <span id="violationCount">0</span> / <span id="maxViolations">3</span></div><div id="liveScoreStrip" class="live-score-strip hidden"></div></div></section>
+<section id="quizScreen" class="screen"><div class="quiz-container classy-quiz"><div class="quiz-top"><div><span class="quiz-kicker">QUIZ IN PROGRESS</span><div>Question <span id="questionNumber">1</span> / <span id="totalQuestions">0</span></div></div><div id="timer">00:00</div></div><div class="progress-container"><div id="progressBar"></div></div><div class="question-box"><div class="question-meta"><span id="quizSubjectBadge"></span><span id="quizTopicBadge"></span></div><h2 id="questionText">Question</h2></div><div id="optionsContainer" class="options"></div><button id="nextBtn" class="next-btn" disabled>Next</button><div id="violationBox" class="violation-box">Warnings: <span id="violationCount">0</span> / <span id="maxViolations">3</span></div><div id="liveScoreStrip" class="live-score-strip hidden"></div></div></section>
 
 <section id="resultScreen" class="screen"><div class="card result-card classy-result"><span class="card-eyebrow">RESULT</span><h1>Quiz Completed</h1><p id="resultPlayer">Player</p><div class="score"><span id="score">0</span> / <span id="resultTotal">0</span></div><p id="resultMessage">Good job!</p><div id="resultLiveBoard" class="result-live-board"></div><button id="restartBtn">Back to Quiz Hub</button></div></section>
 </main>
 
 <div id="warningModal" class="modal"><div class="modal-box"><h2>⚠️ Warning</h2><p id="warningMessage">Please stay in the quiz window.</p><button id="warningOkBtn">Continue Quiz</button></div></div>
 <audio id="warningSound" preload="auto"><source src="warning.mp3" type="audio/mpeg"></audio>
+<script src="live-autosave.js"></script>
+<script src="live-connection.js"></script>
+<script src="live-monitoring.js"></script>
 <script src="script.js"></script>
 </body></html>

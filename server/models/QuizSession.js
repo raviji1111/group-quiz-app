@@ -12,7 +12,8 @@ const sessionSchema = new mongoose.Schema({
   violations: { type: Number, default: 0, min: 0 },
   violationReasons: { type: [String], default: [] },
   joinedAt: { type: Date, default: Date.now },
-  lastSeenAt: { type: Date, default: Date.now }
+  lastSeenAt: { type: Date, default: Date.now },
+  submittedAt: { type: Date, default: null }
 }, { timestamps: true });
 
 module.exports = mongoose.model('QuizSession', sessionSchema);

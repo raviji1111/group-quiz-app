@@ -97,7 +97,6 @@ router.patch('/session/:id/progress', optionalPlayer, async (req, res) => {
     }
     const answers = Array.isArray(req.body.answers) ? req.body.answers.map(a => Number.isInteger(Number(a)) ? Number(a) : -1) : session.answers;
     session.answers = answers;
-    session.lastSeenAt = new Date();
     if (Number.isInteger(Number(req.body.currentQuestion))) session.currentQuestion = Math.max(0, Number(req.body.currentQuestion));
     if (Number.isInteger(Number(req.body.violations))) session.violations = Math.max(0, Number(req.body.violations));
     if (Array.isArray(req.body.violationReasons)) session.violationReasons = req.body.violationReasons.map(String).slice(0, 20);

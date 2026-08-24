@@ -499,8 +499,27 @@ function selectAnswer(index) {
 }
 async function saveProgress() {
   if (!sessionId || !quizStarted) return;
-  try { await api(`/attempts/session/${encodeURIComponent(sessionId)}/progress`, { method: 'PATCH', body: JSON.stringify({ currentQuestion, answers, violations, violationReasons }) }); } catch (e) {}
+  const payload = { sessionId, currentQuestion, answers: [...answers], violations, violationReasons: [...violationReasons] };
+  if (window.LiveAutoSave?.save) {
+    await window.LiveAutoSave.save(payload);
+    return;
+  }
+  try { await api(`/attempts/session/${encodeURIComponent(sessionId)}/progress`, { method: 'PATCH', body: JSON.stringify(payload) }); } catch (e) {}
 }
+
+document.addEventListener('live-session-closed', () => {
+  quizStarted = false;
+  isFinishing = false;
+  submitting = false;
+  clearInterval(timerInterval);
+  clearInterval(liveScoreInterval);
+  window.LiveMonitoring?.stop();
+  localStorage.removeItem(SESSION_STORAGE_KEY);
+  quizScreen.classList.remove('active');
+  resultScreen.classList.remove('active');
+  startScreen.classList.add('active');
+  playerMessage('Your LIVE session was ended by the admin.', true);
+});
 
 nextBtn.addEventListener('click', async () => { if (selectedAnswer === null) return; if (currentQuestion >= questions.length - 1) finishQuiz(); else { currentQuestion++; loadQuestion(); await saveProgress(); } });
 

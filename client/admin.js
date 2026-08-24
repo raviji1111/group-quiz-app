@@ -851,7 +851,15 @@ async function loadLiveBoard(id = liveBoardQuizId) {
     $('liveSubmitted').textContent=data.submitted;
     const body=$('liveBoardBody'); body.innerHTML='';
     if(!data.leaderboard.length){body.innerHTML='<tr><td colspan="6">No participants yet.</td></tr>';return;}
-    data.leaderboard.forEach(r=>{const tr=document.createElement('tr'); [r.rank,r.playerName,`${r.score}/${r.total}`,r.answered,r.submitted?'Submitted':'Live'].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td);}); const td=document.createElement('td'); if(!r.submitted){const b=document.createElement('button');b.className='small-btn detail-btn';b.textContent='Force Submit';b.onclick=async()=>{try{await window.LiveAdminControl.forceSubmit(r.sessionId,r.playerName);await loadLiveBoard();}catch(e){showMessage(e.message,true);}};td.appendChild(b);}else td.textContent='—';tr.appendChild(td);body.appendChild(tr);});
+    data.leaderboard.forEach(r=>{
+      const tr=document.createElement('tr');
+      const seen=r.lastSeenAt?Date.now()-new Date(r.lastSeenAt).getTime():Infinity;
+      const status=r.submitted?'Submitted':(seen<=15000?'Online':'Offline');
+      [r.rank,r.playerName,`${r.score}/${r.total}`,r.answered,status].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td);});
+      const td=document.createElement('td');
+      if(!r.submitted){const b=document.createElement('button');b.className='small-btn detail-btn';b.textContent='Force Submit';b.onclick=async()=>{try{await window.LiveAdminControl.forceSubmit(r.sessionId,r.playerName);await loadLiveBoard();}catch(e){showMessage(e.message,true);}};td.appendChild(b);}else td.textContent='—';
+      tr.appendChild(td); body.appendChild(tr);
+    });
   } catch(e) { showMessage(e.message,true); }
 }
 

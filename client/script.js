@@ -19,6 +19,8 @@ let submitting = false;
 let violationMonitoringReady = false;
 let monitoringTimer = null;
 let waitingTimer = null;
+let liveCardTimer = null;
+let liveLobbyQuiz = null;
 let liveScoreInterval = null;
 let selectedQuizId = '';
 let selectedQuizIsLive = false;
@@ -109,7 +111,12 @@ if (themeToggle) {
 async function api(path, options = {}) {
   const res = await fetch(`${API}${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...(playerToken ? { Authorization: `Bearer ${playerToken}` } : {}), ...(options.headers || {}) } });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || 'Request failed.');
+  if (!res.ok) {
+    const error = new Error(data.message || 'Request failed.');
+    error.status = res.status;
+    error.code = data.code || '';
+    throw error;
+  }
   return data;
 }
 function playerMessage(msg, error = false) { $('playerMessage').textContent = msg; $('playerMessage').classList.toggle('error', error); }
@@ -310,17 +317,51 @@ async function loadLiveQuizzes() {
   const wrap = $('liveCards'); if (!wrap || !loggedPlayer || !playerToken) return;
   try { const data = await api('/live/active'); renderLiveCards(data.quizzes || []); } catch (e) { renderLiveCards([]); }
 }
+function formatCountdown(ms) {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const d = Math.floor(total / 86400);
+  const h = Math.floor((total % 86400) / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (d) return `${d}d ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function liveState(q, now = Date.now()) {
+  const open = q.liveJoinOpenAt ? new Date(q.liveJoinOpenAt).getTime() : now;
+  const close = q.liveJoinCloseAt ? new Date(q.liveJoinCloseAt).getTime() : null;
+  const start = q.liveStartedAt ? new Date(q.liveStartedAt).getTime() : now;
+  const end = q.liveEndsAt ? new Date(q.liveEndsAt).getTime() : null;
+  if (end && now >= end) return {key:'ended', label:'LIVE ENDED', countdown:0};
+  if (close && now >= close && now < start) return {key:'starting', label:'JOIN CLOSED · STARTING SOON', countdown:Math.max(0,start-now)};
+  if (now < open) return {key:'before-join', label:'JOIN OPENS SOON', countdown:Math.max(0,open-now)};
+  if (now < start) return {key:'join-open', label:'JOIN OPEN · STARTING SOON', countdown:Math.max(0,start-now)};
+  return {key:'running', label:'🔴 LIVE RUNNING', countdown:end ? Math.max(0,end-now) : 0};
+}
 function renderLiveCards(quizzes) {
   const wrap = $('liveCards'); if (!wrap) return;
+  clearInterval(liveCardTimer);
   wrap.innerHTML = '';
   if (!quizzes.length) { wrap.innerHTML = '<div class="live-empty">No live quiz right now. Check back soon.</div>'; return; }
+  const cards = [];
   quizzes.forEach(q => {
     const card = document.createElement('article'); card.className = 'live-player-card';
-    card.innerHTML = `<div class="live-player-top"><span>🔴 LIVE NOW</span><strong></strong></div><p></p><h3></h3><div class="live-player-meta"><span>${q.questions.length} Questions</span><span>${q.time} Minutes</span></div><button>Join Live Quiz →</button>`;
+    card.innerHTML = `<div class="live-player-top"><span class="live-card-status"></span><strong></strong></div><p></p><h3></h3><div class="live-player-meta"><span>${q.questions.length} Questions</span><span>${q.time} Minutes</span></div><div class="live-card-countdown"></div><button>Join Live Quiz →</button>`;
     card.querySelector('strong').textContent = q.subject || 'General'; card.querySelector('p').textContent = `Topic: ${q.topic || 'General'}`; card.querySelector('h3').textContent = q.title;
-    card.querySelector('button').onclick = () => { selectedQuizId = q._id; selectedQuizIsLive = true; startBtn.disabled = false; startQuiz(q._id, true); };
+    const btn = card.querySelector('button');
+    btn.onclick = () => { selectedQuizId = q._id; selectedQuizIsLive = true; startBtn.disabled = false; startQuiz(q._id, true); };
+    cards.push({q,card,btn,status:card.querySelector('.live-card-status'),count:card.querySelector('.live-card-countdown')});
     wrap.appendChild(card);
   });
+  const tick = () => {
+    const now = Date.now();
+    cards.forEach(({q,btn,status,count}) => {
+      const st = liveState(q, now); status.textContent = st.label; count.textContent = st.key === 'running' ? `Live closes in ${formatCountdown(st.countdown)}` : st.key === 'ended' ? 'This LIVE has ended.' : `Countdown: ${formatCountdown(st.countdown)}`;
+      btn.disabled = !['join-open','running'].includes(st.key);
+      btn.textContent = st.key === 'join-open' ? 'Join Live Quiz →' : st.key === 'running' ? 'Join Live Quiz →' : st.key === 'before-join' ? 'Join opens later' : st.key === 'starting' ? 'Joining closed' : 'Live ended';
+      status.className = `live-card-status state-${st.key}`;
+    });
+  };
+  tick(); liveCardTimer = setInterval(tick, 1000);
 }
 
 async function startQuiz(forcedQuizId = null, forcedLive = null) {
@@ -356,13 +397,18 @@ async function setupSession(session, quizData) {
   if (session.status === 'waiting' || startAt > now) {
     quizStarted = false;
     startScreen.classList.add('active'); quizScreen.classList.remove('active'); resultScreen.classList.remove('active');
+    document.getElementById('liveLobby')?.classList.remove('hidden');
     startBtn.disabled = true;
+    if ($('liveLobbyTitle')) $('liveLobbyTitle').textContent = quiz.title || 'Live Quiz';
+    if ($('liveLobbyMeta')) $('liveLobbyMeta').textContent = 'You have joined successfully. The quiz will start automatically.';
+    if ($('liveLobbyQuestions')) $('liveLobbyQuestions').textContent = questions.length;
+    if ($('liveLobbyStartAt')) $('liveLobbyStartAt').textContent = new Date(startAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    if ($('liveLobbyEndAt')) $('liveLobbyEndAt').textContent = new Date(session.expiresAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
     const tick = () => {
       const remaining = Math.max(0, startAt - Date.now());
-      if (remaining <= 0) { startBtn.disabled = false; beginActiveQuiz(session); return; }
-      const seconds = Math.ceil(remaining / 1000);
-      const mins = Math.floor(seconds / 60), secs = seconds % 60;
-      playerMessage(`Joined successfully. Quiz starts in ${mins}:${String(secs).padStart(2,'0')}. Keep this page open.`);
+      if (remaining <= 0) { startBtn.disabled = false; document.getElementById('liveLobby')?.classList.add('hidden'); beginActiveQuiz(session); return; }
+      if ($('liveLobbyCountdown')) $('liveLobbyCountdown').textContent = formatCountdown(remaining);
+      if ($('liveLobbyMessage')) $('liveLobbyMessage').textContent = `Quiz starts automatically in ${formatCountdown(remaining)}. Do not refresh the page.`;
       waitingTimer = setTimeout(tick, 1000);
     };
     tick();
@@ -372,6 +418,7 @@ async function setupSession(session, quizData) {
 }
 
 function beginActiveQuiz(session) {
+  document.getElementById('liveLobby')?.classList.add('hidden');
   quizStarted = true; isFinishing = false; submitting = false; warningOpen = false; violationMonitoringReady = false;
   clearTimeout(monitoringTimer);
   timeLeft = Math.max(0, Math.ceil((new Date(session.expiresAt).getTime() - Date.now()) / 1000));
@@ -395,7 +442,12 @@ async function resumeStoredSession() {
     playerNameInput.value = playerName || playerNameInput.value;
     await setupSession(data.session, data.quiz);
   } catch (e) {
-    localStorage.removeItem(SESSION_STORAGE_KEY);
+    // Do not destroy a valid resume pointer because of a temporary network/server
+    // error. Only clear it when the session is definitively invalid or belongs
+    // to another account.
+    if ([401, 403, 404, 409].includes(e.status)) {
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+    }
   }
 }
 
@@ -451,7 +503,7 @@ async function finishQuiz(status = 'completed') {
   }
 }
 
-restartBtn.addEventListener('click', () => { clearInterval(liveScoreInterval); clearTimeout(monitoringTimer); clearTimeout(waitingTimer); localStorage.removeItem(SESSION_STORAGE_KEY); violationMonitoringReady = false; resultScreen.classList.remove('active'); startScreen.classList.add('active'); playerNameInput.value = ''; timer.textContent = '00:00'; progressBar.style.width = '0%'; isFinishing = false; submitting = false; });
+restartBtn.addEventListener('click', () => { document.getElementById('liveLobby')?.classList.add('hidden'); clearInterval(liveScoreInterval); clearTimeout(monitoringTimer); clearTimeout(waitingTimer); localStorage.removeItem(SESSION_STORAGE_KEY); violationMonitoringReady = false; resultScreen.classList.remove('active'); startScreen.classList.add('active'); playerNameInput.value = ''; timer.textContent = '00:00'; progressBar.style.width = '0%'; isFinishing = false; submitting = false; });
 
 async function requestFullscreen() { try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); } catch (e) {} }
 

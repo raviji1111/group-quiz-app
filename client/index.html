@@ -27,6 +27,22 @@
     </div>
   </section>
 
+  <div id="liveLobby" class="live-lobby hidden">
+    <div class="live-lobby-card">
+      <div class="live-lobby-badge">🔴 LIVE LOBBY</div>
+      <h2 id="liveLobbyTitle">Live Quiz</h2>
+      <p id="liveLobbyMeta">You have joined. Please wait for the quiz to start.</p>
+      <div class="live-lobby-countdown" id="liveLobbyCountdown">00:00</div>
+      <div class="live-lobby-grid">
+        <div><span>Questions</span><strong id="liveLobbyQuestions">0</strong></div>
+        <div><span>Join status</span><strong id="liveLobbyJoinStatus">Joined</strong></div>
+        <div><span>Quiz start</span><strong id="liveLobbyStartAt">--</strong></div>
+        <div><span>Live closes</span><strong id="liveLobbyEndAt">--</strong></div>
+      </div>
+      <p id="liveLobbyMessage" class="admin-message"></p>
+    </div>
+  </div>
+
   <div id="quizHubContent" class="quiz-hub-content hidden">
     <div class="player-hero"><div><span class="hero-kicker">QUIZ HUB</span><h1>Welcome back,<br><em>keep learning.</em></h1><p>Choose a subject, open a topic and start a focused practice test.</p></div><div class="hero-badge">✦<span>Classy<br>Quiz Experience</span></div></div>
     <section class="subject-section"><div class="player-section-head"><div><span class="card-eyebrow">EXPLORE</span><h2>Subjects</h2></div><p>Choose a subject to see its topics</p></div><div id="subjectGrid" class="subject-grid"></div></section>

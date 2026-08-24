@@ -14,8 +14,13 @@ router.post('/start', optionalPlayer, async (req, res) => {
     const quiz = await Quiz.findOne({ _id: quizId, $or: [{ isPublished: true }, { liveStatus: 'live' }] });
     if (!quiz) return res.status(404).json({ message: 'Quiz not found.' });
     if (quiz.liveStatus === 'live') {
+      const now = new Date();
       const liveEnds = quiz.liveEndsAt ? new Date(quiz.liveEndsAt) : null;
-      if (!liveEnds || liveEnds <= new Date()) { quiz.liveStatus = 'ended'; await quiz.save(); return res.status(409).json({ message: 'This live quiz has ended.' }); }
+      const joinOpen = quiz.liveJoinOpenAt ? new Date(quiz.liveJoinOpenAt) : null;
+      const joinClose = quiz.liveJoinCloseAt ? new Date(quiz.liveJoinCloseAt) : null;
+      if (!liveEnds || liveEnds <= now) { quiz.liveStatus = 'ended'; await quiz.save(); return res.status(409).json({ message: 'This live quiz has ended. Auto-submit is complete.' }); }
+      if (joinOpen && now < joinOpen) return res.status(403).json({ code:'JOIN_NOT_OPEN', message:`Joining opens at ${joinOpen.toLocaleString()}.` });
+      if (joinClose && now >= joinClose) return res.status(403).json({ code:'JOIN_CLOSED', message:'Joining time is over. You can no longer join this live quiz.' });
     }
     if (quiz.liveStatus === 'ended' && req.body.live === true) return res.status(409).json({ message: 'This live quiz has ended.' });
 
@@ -28,8 +33,21 @@ router.post('/start', optionalPlayer, async (req, res) => {
     const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const safePlayerName = escapeRegex(playerName);
     const playerFilter = playerId ? { player: playerId } : { player: null, playerName: new RegExp(`^${safePlayerName}$`, 'i') };
-    const existing = await QuizSession.findOne({ quiz: quiz._id, ...playerFilter, submitted: false }).sort({ createdAt: -1 });
+    let existing = await QuizSession.findOne({ quiz: quiz._id, ...playerFilter, submitted: false }).sort({ createdAt: -1 });
     const now = new Date();
+
+    // A stale active session must never block a player from starting the quiz
+    // again. This was the main source of "quiz won't start" after a closed tab
+    // or an expired timer. Close the stale session and create a fresh one below.
+    if (existing) {
+      const existingStartedAt = new Date(existing.startedAt);
+      const existingExpiresAt = new Date(existing.expiresAt);
+      if (!existingStartedAt.getTime() || !existingExpiresAt.getTime() || (existingStartedAt <= now && existingExpiresAt <= now)) {
+        existing.submitted = true;
+        await existing.save();
+        existing = null;
+      }
+    }
     const joinStart = quiz.joinStartAt ? new Date(quiz.joinStartAt) : null;
     const joinEnd = quiz.joinEndAt ? new Date(quiz.joinEndAt) : null;
     const scheduledStart = quiz.scheduledStartAt ? new Date(quiz.scheduledStartAt) : null;
@@ -38,7 +56,7 @@ router.post('/start', optionalPlayer, async (req, res) => {
       if (joinStart && now < joinStart) return res.status(403).json({ code: 'JOIN_NOT_OPEN', message: `Joining opens at ${joinStart.toLocaleString()}.` });
       if (joinEnd && now > joinEnd) return res.status(403).json({ code: 'JOIN_CLOSED', message: 'Joining for this quiz is closed.' });
       const startAt = scheduledStart || now;
-      const expiresAt = new Date(startAt.getTime() + quiz.time * 60 * 1000);
+      const expiresAt = (quiz.liveStatus === 'live' && quiz.liveEndsAt) ? new Date(quiz.liveEndsAt) : new Date(startAt.getTime() + quiz.time * 60 * 1000);
       const session = await QuizSession.create({ quiz: quiz._id, playerName, player: playerId, startedAt: startAt, expiresAt, joinedAt: now, answers: Array(quiz.questions.length).fill(-1) });
       const waiting = startAt > now;
       return res.status(201).json({ sessionId: session._id, quizId: quiz._id, status: waiting ? 'waiting' : 'started', startedAt: startAt, expiresAt, time: quiz.time, maxViolations: quiz.maxViolations, currentQuestion: 0, answers: session.answers, liveStatus: quiz.liveStatus });
@@ -67,10 +85,16 @@ router.get('/session/:id', optionalPlayer, async (req, res) => {
   } catch (error) { console.error(error); res.status(400).json({ message: 'Could not resume quiz session.' }); }
 });
 
-router.patch('/session/:id/progress', async (req, res) => {
+router.patch('/session/:id/progress', optionalPlayer, async (req, res) => {
   try {
     const session = await QuizSession.findById(req.params.id);
     if (!session || session.submitted) return res.status(404).json({ message: 'Quiz session not found or already submitted.' });
+    if (!req.player?.id || !session.player || String(req.player.id) !== String(session.player)) {
+      return res.status(403).json({ message: 'This quiz session belongs to another player.' });
+    }
+    if (new Date(session.startedAt) <= new Date() && new Date() > new Date(session.expiresAt)) {
+      return res.status(409).json({ message: 'This quiz session has expired.' });
+    }
     const answers = Array.isArray(req.body.answers) ? req.body.answers.map(a => Number.isInteger(Number(a)) ? Number(a) : -1) : session.answers;
     session.answers = answers;
     if (Number.isInteger(Number(req.body.currentQuestion))) session.currentQuestion = Math.max(0, Number(req.body.currentQuestion));
@@ -81,7 +105,7 @@ router.patch('/session/:id/progress', async (req, res) => {
   } catch (error) { console.error(error); res.status(400).json({ message: 'Could not save quiz progress.' }); }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', optionalPlayer, async (req, res) => {
   try {
     const sessionId = String(req.body.sessionId || '');
     const answers = Array.isArray(req.body.answers) ? req.body.answers : [];
@@ -92,6 +116,9 @@ router.post('/', async (req, res) => {
     const session = await QuizSession.findById(sessionId);
     if (!session) return res.status(404).json({ message: 'Quiz session not found.' });
     if (session.submitted) return res.status(409).json({ message: 'This quiz session has already been submitted.' });
+    if (!req.player?.id || !session.player || String(req.player.id) !== String(session.player)) {
+      return res.status(403).json({ message: 'This quiz session belongs to another player.' });
+    }
 
     const quiz = await Quiz.findOne({ _id: session.quiz, $or: [{ isPublished: true }, { liveStatus: 'live' }] });
     if (!quiz) return res.status(404).json({ message: 'Quiz not found.' });

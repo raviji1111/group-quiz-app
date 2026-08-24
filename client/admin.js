@@ -153,7 +153,7 @@ $('clearQuestionsBtn').addEventListener('click', () => { if (questions.length &&
 
 function quizPayload() {
   const toISO = id => { const v = $(id).value; return v ? new Date(v).toISOString() : null; };
-  return { title: $('quizTitle').value.trim(), subject: $('quizSubject').value.trim() || 'General', topic: $('quizTopic').value.trim() || 'General', time: Number($('quizTime').value), maxViolations: Number($('maxViolations').value), examMode: $('examMode').value === 'on', joinStartAt: toISO('joinStartAt'), joinEndAt: toISO('joinEndAt'), scheduledStartAt: toISO('scheduledStartAt'), liveDuration: Number($('liveDuration').value || 30), showLiveScore: $('showLiveScore').value === 'on', showLeaderboard: $('showLeaderboard').value === 'on', questions };
+  return { title: $('quizTitle').value.trim(), subject: $('quizSubject').value.trim() || 'General', topic: $('quizTopic').value.trim() || 'General', time: Number($('quizTime').value), maxViolations: Number($('maxViolations').value), examMode: $('examMode').value === 'on', joinStartAt: toISO('joinStartAt'), joinEndAt: toISO('joinEndAt'), scheduledStartAt: toISO('scheduledStartAt'), liveDuration: Number($('liveDuration').value || 30), liveJoinOpenAfter: Number($('liveJoinOpenAfter')?.value || 0), liveJoinCloseAfter: Number($('liveJoinCloseAfter')?.value || 0), liveStartAfter: Number($('liveStartAfter')?.value || 0), liveCloseAfter: Number($('liveCloseAfter')?.value || 0), showLiveScore: $('showLiveScore').value === 'on', showLeaderboard: $('showLeaderboard').value === 'on', questions };
 }
 
 $('saveQuizBtn').addEventListener('click', async () => {
@@ -211,6 +211,10 @@ async function editQuiz(id) {
   $('joinEndAt').value = quiz.joinEndAt ? new Date(quiz.joinEndAt).toISOString().slice(0,16) : '';
   $('scheduledStartAt').value = quiz.scheduledStartAt ? new Date(quiz.scheduledStartAt).toISOString().slice(0,16) : '';
   $('liveDuration').value = quiz.liveDuration || 30;
+  if($('liveJoinOpenAfter')) $('liveJoinOpenAfter').value = quiz.liveJoinOpenAfter || 0;
+  if($('liveJoinCloseAfter')) $('liveJoinCloseAfter').value = quiz.liveJoinCloseAfter || 0;
+  if($('liveStartAfter')) $('liveStartAfter').value = quiz.liveStartAfter || 0;
+  if($('liveCloseAfter')) $('liveCloseAfter').value = quiz.liveCloseAfter || 0;
   $('showLiveScore').value = quiz.showLiveScore === false ? 'off' : 'on';
   $('showLeaderboard').value = quiz.showLeaderboard === false ? 'off' : 'on';
     $('maxViolations').value = quiz.maxViolations;
@@ -791,7 +795,7 @@ $('startDirectLiveBtn')?.addEventListener('click',async()=>{
     if(!directLiveQuestions.length)return showMessage('Add and parse at least one question.',true);
     const duration=Number($('directLiveDuration').value||30);
     if(!Number.isInteger(duration)||duration<1||duration>180)return showMessage('Duration must be 1-180 minutes.',true);
-    const result=await api('/live/direct',{method:'POST',body:JSON.stringify({title,subject:$('directLiveSubject').value.trim()||'General',topic:$('directLiveTopic').value.trim()||'General',duration,questions:directLiveQuestions,showLiveScore:true,showLeaderboard:true})});
+    const result=await api('/live/direct',{method:'POST',body:JSON.stringify({title,subject:$('directLiveSubject').value.trim()||'General',topic:$('directLiveTopic').value.trim()||'General',duration,questions:directLiveQuestions,liveJoinOpenAfter:Number($('directLiveJoinOpenAfter')?.value||0),liveJoinCloseAfter:Number($('directLiveJoinCloseAfter')?.value||0),liveStartAfter:Number($('directLiveStartAfter')?.value||0),liveCloseAfter:Number($('directLiveCloseAfter')?.value||duration),showLiveScore:true,showLeaderboard:true})});
     liveBoardQuizId=result.quiz._id;
     showMessage('Live quiz started directly. It is NOT published.');
     await loadLiveQuizCards(); await loadLiveBoard(result.quiz._id);

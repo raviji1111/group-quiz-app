@@ -178,7 +178,7 @@ D. ..."></textarea>
 
           <section id="liveSettingsPanel" class="editor-panel">
             <div class="admin-card live-settings-card"><div class="section-header"><div><span class="card-eyebrow">LIVE CONTROL</span><h3>🔴 Live Quiz Settings</h3><p class="card-muted">Configure what students see when you start this quiz as a live test.</p></div></div>
-              <div class="admin-grid"><div class="form-group"><label>Live Duration (minutes)</label><input id="liveDuration" type="number" value="30" min="1" max="180"></div><div class="form-group"><label>Live Score</label><select id="showLiveScore"><option value="on">Show to students</option><option value="off">Hide</option></select></div><div class="form-group"><label>Live Leaderboard</label><select id="showLeaderboard"><option value="on">Show to students</option><option value="off">Hide</option></select></div></div>
+              <div class="admin-grid"><div class="form-group"><label>Join Opens After (min)</label><input id="liveJoinOpenAfter" type="number" value="0" min="0" max="180"></div><div class="form-group"><label>Join Closes After (min)</label><input id="liveJoinCloseAfter" type="number" value="0" min="0" max="180"></div><div class="form-group"><label>Quiz Starts After (min)</label><input id="liveStartAfter" type="number" value="0" min="0" max="180"></div><div class="form-group"><label>Live Closes After (min)</label><input id="liveCloseAfter" type="number" value="30" min="1" max="360"></div><div class="form-group"><label>Live Duration (fallback)</label><input id="liveDuration" type="number" value="30" min="1" max="180"></div><div class="form-group"><label>Live Score</label><select id="showLiveScore"><option value="on">Show to students</option><option value="off">Hide</option></select></div><div class="form-group"><label>Live Leaderboard</label><select id="showLeaderboard"><option value="on">Show to students</option><option value="off">Hide</option></select></div></div>
               <div class="live-settings-tip"><strong>Tip:</strong> Save the quiz first. You can then start and monitor it from <b>Live Quiz</b> in the main admin menu.</div>
             </div>
           </section>
@@ -209,6 +209,10 @@ D. ..."></textarea>
           <div class="form-group"><label>Subject</label><input id="directLiveSubject" placeholder="Maths"></div>
           <div class="form-group"><label>Topic</label><input id="directLiveTopic" placeholder="Percentage"></div>
           <div class="form-group"><label>Duration (minutes)</label><input id="directLiveDuration" type="number" value="30" min="1" max="180"></div>
+          <div class="form-group"><label>Join Opens After (min)</label><input id="directLiveJoinOpenAfter" type="number" value="0" min="0" max="180"></div>
+          <div class="form-group"><label>Join Closes After (min)</label><input id="directLiveJoinCloseAfter" type="number" value="0" min="0" max="180"></div>
+          <div class="form-group"><label>Quiz Starts After (min)</label><input id="directLiveStartAfter" type="number" value="0" min="0" max="180"></div>
+          <div class="form-group"><label>Live Closes After (min)</label><input id="directLiveCloseAfter" type="number" value="30" min="1" max="360"></div>
         </div>
         <div class="form-group"><label>Questions — same Bulk Paste format</label><textarea id="directLiveQuestions" rows="10" placeholder="1. Question
 A. Option A

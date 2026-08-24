@@ -8,12 +8,47 @@ const { requirePlayer } = require('../middleware/playerAuth');
 
 const router = express.Router();
 
+
+async function finalizeExpiredLiveQuiz(quiz) {
+  if (!quiz?.liveEndsAt || new Date(quiz.liveEndsAt) > new Date()) return false;
+  if (quiz.liveStatus === 'live' && typeof quiz.save === 'function') {
+    const locked = await Quiz.findOneAndUpdate({ _id: quiz._id, liveStatus: 'live' }, { $set: { liveStatus: 'ended' } }, { new: true });
+    if (!locked) return false;
+    quiz.liveStatus = 'ended';
+  }
+  const sessions = await QuizSession.find({ quiz: quiz._id, submitted: false });
+  for (const session of sessions) {
+    const safeAnswers = (session.answers || []).slice(0, quiz.questions.length).map(a => Number.isInteger(Number(a)) ? Number(a) : -1);
+    let score = 0;
+    quiz.questions.forEach((q, i) => { if (safeAnswers[i] === q.answer) score++; });
+    const total = quiz.questions.length;
+    const percentage = total ? Math.round((score / total) * 10000) / 100 : 0;
+    await Attempt.create({ quiz: quiz._id, player: session.player || null, playerName: session.playerName, answers: safeAnswers, score, total, percentage, violations: session.violations || 0, violationReasons: session.violationReasons || [], status: 'auto-submitted' });
+    session.submitted = true;
+    await session.save();
+  }
+  return true;
+}
+
+
+setInterval(async () => {
+  try {
+    const expired = await Quiz.find({ liveStatus: 'live', liveEndsAt: { $lte: new Date() } });
+    for (const quiz of expired) await finalizeExpiredLiveQuiz(quiz);
+  } catch (e) { console.error('Live auto-close error:', e.message); }
+}, 5000);
+
 router.get('/active', requirePlayer, async (req, res) => {
   try {
     const now = new Date();
+    const candidates = await Quiz.find({ liveStatus: 'live', liveEndsAt: { $gt: now } });
+    for (const q of candidates) await finalizeExpiredLiveQuiz(q);
+    // Keep a live card visible for the whole LIVE window so students can see
+    // the exact state/countdown before join opens and after join closes.
+    // The actual join permission is enforced again by /attempts/start.
     const quizzes = await Quiz.find({ liveStatus: 'live', liveEndsAt: { $gt: now } })
-      .select('_id title subject topic time questions.question questions.options liveStartedAt liveEndsAt showLiveScore showLeaderboard')
-      .sort({ liveStartedAt: -1 });
+      .select('_id title subject topic time questions.question questions.options liveLaunchAt liveJoinOpenAt liveJoinCloseAt liveStartedAt liveEndsAt showLiveScore showLeaderboard')
+      .sort({ liveStartedAt: 1, liveLaunchAt: -1 });
     res.json({ quizzes });
   } catch (e) { res.status(500).json({ message: 'Could not load live quizzes.' }); }
 });
@@ -41,7 +76,7 @@ router.get('/:id/board', requirePlayer, async (req, res) => {
 router.get('/:id/public', requirePlayer, async (req, res) => {
   try {
     const quiz = await Quiz.findOne({ _id: req.params.id, liveStatus: 'live', liveEndsAt: { $gt: new Date() } })
-      .select('_id title subject topic time maxViolations examMode liveStatus liveStartedAt liveEndsAt showLiveScore showLeaderboard questions.question questions.options');
+      .select('_id title subject topic time maxViolations examMode liveStatus liveLaunchAt liveJoinOpenAt liveJoinCloseAt liveStartedAt liveEndsAt showLiveScore showLeaderboard questions.question questions.options');
     if (!quiz) return res.status(404).json({ message: 'Live quiz not found or has ended.' });
     res.json({ quiz });
   } catch (e) { res.status(400).json({ message: 'Could not load live quiz.' }); }
@@ -65,11 +100,23 @@ router.post('/direct', requireAdmin, async (req,res)=>{
       if(!question || options.length!==4 || options.some(x=>!x) || !Number.isInteger(answer) || answer<0 || answer>3) throw new Error(`Invalid question ${i+1}.`);
       return {question,options,answer};
     });
-    const startedAt=new Date();
-    const endsAt=new Date(startedAt.getTime()+duration*60000);
+    const launchAt=new Date();
+    const joinOpenAfter=Math.max(0, Math.min(180, Number(req.body.liveJoinOpenAfter || 0)));
+    const joinCloseAfter=Math.max(0, Math.min(180, Number(req.body.liveJoinCloseAfter || 0)));
+    const startAfter=Math.max(0, Math.min(180, Number(req.body.liveStartAfter || 0)));
+    const closeAfter=Math.max(1, Math.min(360, Number(req.body.liveCloseAfter || duration)));
+    if (joinCloseAfter && joinCloseAfter < joinOpenAfter) return res.status(400).json({message:'Join close time must be after join open time.'});
+    if (startAfter && joinCloseAfter && startAfter < joinCloseAfter) return res.status(400).json({message:'Quiz start time must be at or after join close time.'});
+    if (closeAfter <= startAfter) return res.status(400).json({message:'Live close time must be after quiz start time.'});
+    const startAt=new Date(launchAt.getTime()+startAfter*60000);
+    const endsAt=new Date(launchAt.getTime()+closeAfter*60000);
+    const joinOpenAt=joinOpenAfter ? new Date(launchAt.getTime()+joinOpenAfter*60000) : launchAt;
+    const joinCloseAt=joinCloseAfter ? new Date(launchAt.getTime()+joinCloseAfter*60000) : null;
     const quiz=await Quiz.create({
       title,subject,topic,time:duration,liveDuration:duration,maxViolations,examMode:true,
-      isPublished:false,liveStatus:'live',liveStartedAt:startedAt,liveEndsAt:endsAt,
+      isPublished:false,liveStatus:'live',liveLaunchAt:launchAt,liveStartedAt:startAt,liveEndsAt:endsAt,
+      liveJoinOpenAt:joinOpenAt,liveJoinCloseAt:joinCloseAt,liveJoinOpenAfter:joinOpenAfter,liveJoinCloseAfter:joinCloseAfter,liveStartAfter:startAfter,liveCloseAfter:closeAfter,
+      scheduledStartAt:startAt,
       showLiveScore:req.body.showLiveScore!==false,showLeaderboard:req.body.showLeaderboard!==false,
       questions:cleaned,createdBy:req.admin.id
     });
@@ -81,16 +128,26 @@ router.post('/:id/start', requireAdmin, async (req,res)=>{
   try {
     const quiz=await Quiz.findById(req.params.id); if(!quiz) return res.status(404).json({message:'Quiz not found.'});
     const minutes=Math.max(1, Math.min(180, Number(req.body.duration || quiz.liveDuration || quiz.time)));
-    quiz.liveDuration=minutes;
-    const startAt=new Date(); const endsAt=new Date(startAt.getTime()+minutes*60000);
-    quiz.time=minutes; quiz.liveStatus='live'; quiz.liveStartedAt=startAt; quiz.liveEndsAt=endsAt;
+    const launchAt=new Date();
+    const joinOpenAfter=Math.max(0, Math.min(180, Number(req.body.liveJoinOpenAfter ?? quiz.liveJoinOpenAfter ?? 0)));
+    const joinCloseAfter=Math.max(0, Math.min(180, Number(req.body.liveJoinCloseAfter ?? quiz.liveJoinCloseAfter ?? 0)));
+    const startAfter=Math.max(0, Math.min(180, Number(req.body.liveStartAfter ?? quiz.liveStartAfter ?? 0)));
+    const closeAfter=Math.max(1, Math.min(360, Number(req.body.liveCloseAfter ?? quiz.liveCloseAfter ?? minutes)));
+    if (joinCloseAfter && joinCloseAfter < joinOpenAfter) return res.status(400).json({message:'Join close time must be after join open time.'});
+    if (startAfter && joinCloseAfter && startAfter < joinCloseAfter) return res.status(400).json({message:'Quiz start time must be at or after join close time.'});
+    if (closeAfter <= startAfter) return res.status(400).json({message:'Live close time must be after quiz start time.'});
+    const startAt=new Date(launchAt.getTime()+startAfter*60000);
+    const endsAt=new Date(launchAt.getTime()+closeAfter*60000);
+    const joinOpenAt=joinOpenAfter ? new Date(launchAt.getTime()+joinOpenAfter*60000) : launchAt;
+    const joinCloseAt=joinCloseAfter ? new Date(launchAt.getTime()+joinCloseAfter*60000) : null;
+    quiz.liveDuration=minutes; quiz.time=minutes; quiz.liveStatus='live'; quiz.liveLaunchAt=launchAt; quiz.liveStartedAt=startAt; quiz.liveEndsAt=endsAt; quiz.liveJoinOpenAt=joinOpenAt; quiz.liveJoinCloseAt=joinCloseAt; quiz.liveJoinOpenAfter=joinOpenAfter; quiz.liveJoinCloseAfter=joinCloseAfter; quiz.liveStartAfter=startAfter; quiz.liveCloseAfter=closeAfter; quiz.scheduledStartAt=startAt;
     quiz.showLiveScore=req.body.showLiveScore !== false; quiz.showLeaderboard=req.body.showLeaderboard !== false;
     await quiz.save(); res.json({quiz});
   } catch(e){res.status(400).json({message:e.message||'Could not start live quiz.'});}
 });
 
 router.post('/:id/end', requireAdmin, async (req,res)=>{
-  try { const quiz=await Quiz.findById(req.params.id); if(!quiz)return res.status(404).json({message:'Quiz not found.'}); quiz.liveStatus='ended'; quiz.liveEndsAt=new Date(); await quiz.save(); res.json({quiz}); }
+  try { const quiz=await Quiz.findById(req.params.id); if(!quiz)return res.status(404).json({message:'Quiz not found.'}); const forced={...quiz.toObject(), liveEndsAt:new Date(0), liveStatus:'live'}; await finalizeExpiredLiveQuiz(forced); quiz.liveStatus='ended'; quiz.liveEndsAt=new Date(); await quiz.save(); res.json({quiz}); }
   catch(e){res.status(400).json({message:'Could not end live quiz.'});}
 });
 

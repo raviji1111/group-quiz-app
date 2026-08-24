@@ -1,9 +1,3 @@
-## V20.3 — compact bilingual question rendering
-- Normalize PDF line-wraps into spaces before rendering quiz text.
-- Keep only the English → Hindi language break.
-- Prevent Hindi/English words from being forced onto separate lines.
-- Reduce question typography responsively so options remain visible.
-
 # Changelog
 
 ## V16

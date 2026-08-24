@@ -11,7 +11,7 @@ const router = express.Router();
 router.post('/start', optionalPlayer, async (req, res) => {
   try {
     const quizId = String(req.body.quizId || '');
-    const quiz = await Quiz.findOne({ _id: quizId, isPublished: true });
+    const quiz = await Quiz.findOne({ _id: quizId, $or: [{ isPublished: true }, { liveStatus: 'live' }] });
     if (!quiz) return res.status(404).json({ message: 'Quiz not found.' });
     if (quiz.liveStatus === 'live') {
       const liveEnds = quiz.liveEndsAt ? new Date(quiz.liveEndsAt) : null;
@@ -62,7 +62,7 @@ router.get('/session/:id', optionalPlayer, async (req, res) => {
     if (!session) return res.status(404).json({ message: 'Quiz session not found.' });
     if (!req.player?.id) return res.status(401).json({ code: 'AUTH_REQUIRED', message: 'Please login to resume this quiz.' });
     if (!session.player || String(req.player.id) !== String(session.player)) return res.status(403).json({ message: 'This quiz session belongs to another player.' });
-    const quiz = await Quiz.findOne({ _id: session.quiz, isPublished: true }).select('_id title time maxViolations examMode questions.question questions.options');
+    const quiz = await Quiz.findOne({ _id: session.quiz, $or: [{ isPublished: true }, { liveStatus: 'live' }] }).select('_id title time maxViolations examMode questions.question questions.options liveStatus liveEndsAt');
     if (!quiz) return res.status(404).json({ message: 'Quiz not found.' });
     const now = new Date();
     if (!session.submitted && now > session.expiresAt && new Date(session.startedAt) <= now) return res.status(409).json({ message: 'This quiz session has expired.' });
@@ -96,7 +96,7 @@ router.post('/', async (req, res) => {
     if (!session) return res.status(404).json({ message: 'Quiz session not found.' });
     if (session.submitted) return res.status(409).json({ message: 'This quiz session has already been submitted.' });
 
-    const quiz = await Quiz.findOne({ _id: session.quiz, isPublished: true });
+    const quiz = await Quiz.findOne({ _id: session.quiz, $or: [{ isPublished: true }, { liveStatus: 'live' }] });
     if (!quiz) return res.status(404).json({ message: 'Quiz not found.' });
 
     const now = new Date();

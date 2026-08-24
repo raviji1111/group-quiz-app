@@ -770,6 +770,35 @@ loadAll = async function() {
   await loadLegacyUsers();
 };
 
+/* ===== DIRECT LIVE QUIZ ===== */
+let directLiveQuestions = [];
+function renderDirectLivePreview(){
+  const el=$('directLivePreview'); if(!el)return;
+  el.innerHTML = directLiveQuestions.length ? `<strong>${directLiveQuestions.length} questions ready.</strong> Answers detected automatically. Click Start Live Directly to launch without publishing.` : '';
+  if($('directLiveMessage')) $('directLiveMessage').textContent = directLiveQuestions.length ? `${directLiveQuestions.length} questions parsed successfully.` : '';
+}
+$('parseDirectLiveBtn')?.addEventListener('click',()=>{
+  const items=parseBulkQuestions($('directLiveQuestions').value);
+  if(!items.length){if($('directLiveMessage'))$('directLiveMessage').textContent='No valid questions found. Use the same A/B/C/D + Answer format.';return;}
+  directLiveQuestions=items; renderDirectLivePreview();
+});
+$('clearDirectLiveBtn')?.addEventListener('click',()=>{directLiveQuestions=[];$('directLiveQuestions').value='';renderDirectLivePreview();});
+$('startDirectLiveBtn')?.addEventListener('click',async()=>{
+  try{
+    if(!directLiveQuestions.length){const items=parseBulkQuestions($('directLiveQuestions').value); if(items.length)directLiveQuestions=items;}
+    const title=$('directLiveTitle').value.trim();
+    if(!title)return showMessage('Enter a live quiz name.',true);
+    if(!directLiveQuestions.length)return showMessage('Add and parse at least one question.',true);
+    const duration=Number($('directLiveDuration').value||30);
+    if(!Number.isInteger(duration)||duration<1||duration>180)return showMessage('Duration must be 1-180 minutes.',true);
+    const result=await api('/live/direct',{method:'POST',body:JSON.stringify({title,subject:$('directLiveSubject').value.trim()||'General',topic:$('directLiveTopic').value.trim()||'General',duration,questions:directLiveQuestions,showLiveScore:true,showLeaderboard:true})});
+    liveBoardQuizId=result.quiz._id;
+    showMessage('Live quiz started directly. It is NOT published.');
+    await loadLiveQuizCards(); await loadLiveBoard(result.quiz._id);
+    $('directLiveQuestions').value=''; directLiveQuestions=[]; renderDirectLivePreview();
+  }catch(e){showMessage(e.message,true);}
+});
+
 /* ===== V17 LIVE CONTROL ===== */
 let liveBoardQuizId = '';
 let liveBoardTimer = null;

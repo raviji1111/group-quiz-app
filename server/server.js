@@ -6,7 +6,6 @@ const mongoose = require('mongoose');
 const authRoutes = require('./routes/auth');
 const quizRoutes = require('./routes/quizzes');
 const attemptRoutes = require('./routes/attempts');
-const publishedRoutes = require('./routes/published');
 const playerAuthRoutes = require('./routes/playerAuth');
 const playerRoutes = require('./routes/players');
 const liveRoutes = require('./routes/live');
@@ -23,7 +22,6 @@ app.get('/api/health', (req, res) => res.json({ ok: true, service: 'group-quiz-a
 app.use('/api/auth', authRoutes);
 app.use('/api/quizzes', quizRoutes);
 app.use('/api/attempts', attemptRoutes);
-app.use('/api/published', publishedRoutes);
 app.use('/api/player', playerAuthRoutes);
 app.use('/api/players', playerRoutes);
 app.use('/api/live', liveRoutes);

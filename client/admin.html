@@ -202,6 +202,30 @@ D. ..."></textarea>
 
     <section id="liveSection" class="admin-section">
       <div class="section-heading"><div><h2>Live Quiz Control</h2><p>Start, monitor and end live quizzes with live participation and leaderboard.</p></div></div>
+      <section class="admin-card direct-live-card" id="directLiveCard">
+        <div class="section-header"><div><span class="card-eyebrow">DIRECT LIVE</span><h3>⚡ Start Live Quiz Directly</h3><p class="card-muted">यहाँ quiz बनाओ और बिना Publish किए सीधे LIVE चलाओ। यह Published Quizzes में नहीं जाएगा।</p></div></div>
+        <div class="admin-grid direct-live-grid">
+          <div class="form-group"><label>Live Quiz Name</label><input id="directLiveTitle" placeholder="Example: Percentage Sheet 02 Live"></div>
+          <div class="form-group"><label>Subject</label><input id="directLiveSubject" placeholder="Maths"></div>
+          <div class="form-group"><label>Topic</label><input id="directLiveTopic" placeholder="Percentage"></div>
+          <div class="form-group"><label>Duration (minutes)</label><input id="directLiveDuration" type="number" value="30" min="1" max="180"></div>
+        </div>
+        <div class="form-group"><label>Questions — same Bulk Paste format</label><textarea id="directLiveQuestions" rows="10" placeholder="1. Question
+A. Option A
+B. Option B
+C. Option C
+D. Option D
+Answer: B
+
+2. Question...
+A. ...
+B. ...
+C. ...
+D. ...
+Answer: D"></textarea></div>
+        <div class="form-actions"><button id="parseDirectLiveBtn" type="button">＋ Parse Questions</button><button id="startDirectLiveBtn" type="button" class="live-start-btn">🚀 Start Live Directly</button><button id="clearDirectLiveBtn" type="button" class="secondary-btn">Clear</button></div>
+        <p id="directLiveMessage" class="admin-message"></p><div id="directLivePreview" class="direct-live-preview"></div>
+      </section>
       <div id="liveQuizCards" class="live-admin-grid"></div>
       <section class="admin-card live-board-card"><div class="section-header"><div><span class="card-eyebrow">LIVE BOARD</span><h3 id="liveBoardTitle">Select a live quiz</h3><p id="liveBoardMeta" class="card-muted">Participants and scores refresh automatically.</p></div><button id="refreshLiveBoardBtn" class="secondary-btn">↻ Refresh</button></div><div class="live-metrics"><div><span>Participants</span><strong id="liveParticipants">0</strong></div><div><span>Active</span><strong id="liveActive">0</strong></div><div><span>Submitted</span><strong id="liveSubmitted">0</strong></div></div><div class="table-wrap"><table><thead><tr><th>Rank</th><th>Student</th><th>Score</th><th>Answered</th><th>Status</th></tr></thead><tbody id="liveBoardBody"></tbody></table></div></section>
     </section>

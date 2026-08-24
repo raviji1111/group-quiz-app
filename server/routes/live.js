@@ -151,12 +151,28 @@ router.post('/:id/end', requireAdmin, async (req,res)=>{
   catch(e){res.status(400).json({message:'Could not end live quiz.'});}
 });
 
+router.post('/:id/session/:sessionId/force-submit', requireAdmin, async (req,res)=>{
+  try {
+    const quiz=await Quiz.findById(req.params.id).select('_id liveStatus questions.answer');
+    if(!quiz || quiz.liveStatus !== 'live') return res.status(409).json({message:'Live quiz is not active.'});
+    const session=await QuizSession.findOne({_id:req.params.sessionId, quiz:quiz._id});
+    if(!session) return res.status(404).json({message:'Participant session not found.'});
+    if(session.submitted) return res.json({ok:true,message:'Participant already submitted.'});
+    const safeAnswers=Array.isArray(session.answers)?session.answers.map(a=>Number.isInteger(a)?a:-1):[];
+    let score=0; quiz.questions.forEach((q,i)=>{if(safeAnswers[i]===q.answer)score++;});
+    const total=quiz.questions.length, percentage=total?Math.round((score/total)*10000)/100:0;
+    await Attempt.create({quiz:quiz._id,player:session.player||null,playerName:session.playerName,answers:safeAnswers,score,total,percentage,violations:session.violations||0,violationReasons:session.violationReasons||[],status:'admin-submitted'});
+    session.submitted=true; session.answers=safeAnswers; session.lastSeenAt=new Date(); await session.save();
+    res.json({ok:true,score,total,percentage});
+  }catch(e){res.status(400).json({message:e.message||'Could not submit participant.'});}
+});
+
 router.get('/:id/admin-board', requireAdmin, async (req,res)=>{
   try {
     const quiz=await Quiz.findById(req.params.id).select('_id title subject topic liveStatus liveStartedAt liveEndsAt showLiveScore showLeaderboard questions.answer');
     if(!quiz)return res.status(404).json({message:'Quiz not found.'});
-    const sessions=await QuizSession.find({quiz:quiz._id}).select('playerName answers submitted startedAt joinedAt');
-    const rows=sessions.map(s=>{let score=0; quiz.questions.forEach((q,i)=>{if(s.answers?.[i]===q.answer)score++;}); return {playerName:s.playerName,score,total:quiz.questions.length,answered:(s.answers||[]).filter(a=>a>=0).length,submitted:s.submitted,joinedAt:s.joinedAt};}).sort((a,b)=>b.score-a.score||a.answered-b.answered);
+    const sessions=await QuizSession.find({quiz:quiz._id}).select('playerName answers submitted startedAt joinedAt lastSeenAt');
+    const rows=sessions.map(s=>{let score=0; quiz.questions.forEach((q,i)=>{if(s.answers?.[i]===q.answer)score++;}); return {sessionId:s._id,playerName:s.playerName,score,total:quiz.questions.length,answered:(s.answers||[]).filter(a=>a>=0).length,submitted:s.submitted,joinedAt:s.joinedAt,lastSeenAt:s.lastSeenAt,connection:s.submitted?'submitted':(s.lastSeenAt && (Date.now()-new Date(s.lastSeenAt).getTime())<15000?'online':'offline')};}).sort((a,b)=>b.score-a.score||a.answered-b.answered);
     res.json({quiz,participants:rows.length,active:rows.filter(x=>!x.submitted).length,submitted:rows.filter(x=>x.submitted).length,leaderboard:rows.map((r,i)=>({...r,rank:i+1}))});
   }catch(e){res.status(400).json({message:'Could not load live board.'});}
 });

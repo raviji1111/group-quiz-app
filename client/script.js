@@ -62,11 +62,9 @@ function formatMathText(value) {
   text = text.replace(/(?<![\d/>])\b(\d+)\s*\/\s*(\d+)\b/g,
     '<span class="mixed-fraction standalone-fraction"><span class="fraction-top">$1</span><span class="fraction-bottom">$2</span></span>');
 
-  // Keep bilingual questions in two clean lines. Many PDF extractors return
-  // English + Hindi on one line (e.g. "...is? किसी..."). Split only at the
-  // English-to-Devanagari boundary so spaces inside the Hindi sentence remain intact.
-  text = text.replace(/([A-Za-z0-9%\)\]\?\!\.:;])\s+(?=[\u0900-\u097F])/g, '$1<br class="bilingual-break">');
-  text = text.replace(/\r?\n/g, '<br class="bilingual-break">');
+  // PDF line breaks are formatting artifacts. Normalize them to spaces so the
+  // browser wraps the complete question naturally according to the available width.
+  text = text.replace(/\s+/g, ' ').trim();
 
   return text;
 }

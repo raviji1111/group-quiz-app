@@ -521,13 +521,25 @@ document.addEventListener('live-session-closed', () => {
   playerMessage('Your LIVE session was ended by the admin.', true);
 });
 
-nextBtn.addEventListener('click', async () => { if (selectedAnswer === null) return; if (currentQuestion >= questions.length - 1) finishQuiz(); else { currentQuestion++; loadQuestion(); await saveProgress(); } });
+nextBtn.addEventListener('click', async () => {
+  if (selectedAnswer === null) return;
+  if (currentQuestion >= questions.length - 1) {
+    // LIVE manual submit: save the final answer first, then submit even if the
+    // exam-mode monitoring warmup has not completed.
+    await saveProgress();
+    finishQuiz('completed', true);
+  } else {
+    currentQuestion++;
+    loadQuestion();
+    await saveProgress();
+  }
+});
 
 function startTimer() { clearInterval(timerInterval); updateTimer(); timerInterval = setInterval(() => { if (!quizStarted) return; timeLeft = Math.max(0, timeLeft - 1); updateTimer(); if (timeLeft <= 0) finishQuiz('auto-submitted'); }, 1000); }
 function updateTimer() { timer.textContent = `${String(Math.floor(timeLeft / 60)).padStart(2, '0')}:${String(timeLeft % 60).padStart(2, '0')}`; }
 
-async function finishQuiz(status = 'completed') {
-  if (!quizStarted || !violationMonitoringReady || isFinishing || submitting) return;
+async function finishQuiz(status = 'completed', manualSubmit = false) {
+  if (!quizStarted || (!violationMonitoringReady && !manualSubmit) || isFinishing || submitting) return;
   isFinishing = true; quizStarted = false; violationMonitoringReady = false; clearTimeout(monitoringTimer); clearInterval(timerInterval); clearInterval(liveScoreInterval); window.LiveMonitoring?.stop(); submitting = true;
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   try {

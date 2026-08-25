@@ -1,0 +1,74 @@
+/* User home compact classic UI - visual only. Existing IDs/functions are untouched. */
+
+/* Remove the large welcome hero from the authenticated quiz hub. */
+#quizHubContent > .player-hero {
+  display: none !important;
+}
+
+/* Keep the home content starting naturally after the header. */
+#quizHubContent {
+  padding-top: 12px;
+}
+
+/* Compact classic LIVE block. */
+#livePreview.live-preview-section {
+  margin-top: 10px !important;
+  padding: 14px 16px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  background: rgba(18, 25, 38, .92) !important;
+  box-shadow: none !important;
+}
+
+#livePreview .player-section-head {
+  min-height: 34px !important;
+  margin-bottom: 8px !important;
+  align-items: center !important;
+}
+
+#livePreview .player-section-head h2 {
+  margin: 0 !important;
+  font-size: 18px !important;
+  line-height: 1.2 !important;
+}
+
+#livePreview .live-eyebrow {
+  font-size: 9px !important;
+  letter-spacing: .14em !important;
+  margin-bottom: 2px !important;
+}
+
+#livePreview #refreshLiveBtn {
+  padding: 7px 12px !important;
+  min-height: 32px !important;
+  font-size: 12px !important;
+}
+
+#livePreview .live-card-grid {
+  min-height: 0 !important;
+  gap: 8px !important;
+}
+
+#livePreview .live-card-grid:empty::before {
+  content: 'No live quiz right now. Check back soon.';
+  display: block;
+  padding: 11px 12px;
+  border: 1px dashed rgba(255,255,255,.18);
+  border-radius: 7px;
+  text-align: center;
+  font-size: 12px;
+  opacity: .7;
+}
+
+/* Compact classic cards if a LIVE card is present. */
+#livePreview .live-card,
+#livePreview .live-quiz-card {
+  padding: 12px 14px !important;
+  border-radius: 8px !important;
+}
+
+@media (max-width: 700px) {
+  #quizHubContent { padding-top: 8px; }
+  #livePreview.live-preview-section { padding: 11px 12px !important; }
+  #livePreview .player-section-head h2 { font-size: 16px !important; }
+}

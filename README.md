@@ -1,3 +1,6 @@
-# Group Quiz App v20.7.0 — Official Phase 2
+# Group Quiz App v21.0.0 — LIVE Phase 1–4
 
-Phase 2 is delivered as one project. New LIVE features are separated into dedicated files rather than mixed into the existing main scripts.
+Complete LIVE roadmap: timing and automatic close, answer auto-save, connection recovery, participant monitoring and force-submit, leaderboard/result controls/export/announcements/pause-resume, plus security controls, audit history, detailed analytics and real-time performance statistics.
+
+New Phase 4 modules are isolated under `server/middleware/liveSecurity.js`, `server/services/liveAnalyticsService.js`, `server/routes/liveAnalytics.js`, `server/models/LiveAuditEvent.js`, and `client/live-performance.js`.
+

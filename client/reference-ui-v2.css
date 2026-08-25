@@ -1,0 +1,76 @@
+/* Reference UI v2 — layout/structure only. Existing feature styles remain intact. */
+:root{--ref-black:#07101d;--ref-black2:#0c1626;--ref-white:#fff;--ref-line:#25344a;--ref-blue:#2563eb;--ref-green:#16a34a;--ref-red:#dc2626;}
+
+/* USER: compact hub */
+body.player-site #startScreen{padding:18px 24px;align-items:flex-start;}
+body.player-site .player-main{width:100%;}
+body.player-site .player-hero{min-height:150px;padding:28px 36px;border-radius:18px;margin-bottom:18px;}
+body.player-site .player-hero h1{font-size:42px;line-height:1.02;margin:4px 0 8px;}
+body.player-site .player-hero p{margin:0;}
+body.player-site .hero-badge{width:120px;height:120px;}
+body.player-site .subject-section,body.player-site .catalog-section,body.player-site .live-preview-section{margin-top:16px;}
+
+/* USER: quiz screen mirrors the reference composition */
+body.player-site #quizScreen{background:var(--ref-black);padding:22px 24px;align-items:flex-start;}
+body.player-site .classy-quiz{width:min(700px,100%);margin:0 auto;background:linear-gradient(180deg,#07101d,#0a1422);border:1px solid #1e2d42;border-radius:18px;padding:18px 16px 20px;box-shadow:none;}
+body.player-site .classy-quiz .quiz-top{margin:0 0 14px;padding:0 2px;color:#fff;}
+body.player-site .classy-quiz .quiz-top>div:first-child{display:flex;align-items:center;gap:16px;}
+body.player-site .classy-quiz .quiz-kicker{display:inline-flex;align-items:center;justify-content:center;background:#2563eb;border:1px solid #3b82f6;border-radius:8px;padding:7px 12px;font-size:18px;font-weight:800;color:#fff;}
+body.player-site .classy-quiz .quiz-top>div:first-child>div{font-size:18px;font-weight:600;}
+body.player-site .classy-quiz #timer{background:transparent;color:#fbbf24;font-size:18px;padding:0;min-width:80px;}
+body.player-site .classy-quiz .progress-container{display:none;}
+body.player-site .classy-quiz .question-box{background:#081321;border:1px solid #2a3b52;border-radius:12px;padding:28px 26px;margin:0 0 14px;min-height:190px;display:flex;flex-direction:column;justify-content:center;}
+body.player-site .classy-quiz .question-meta{display:none;}
+body.player-site .classy-quiz #questionText{font-size:26px;line-height:1.65;color:#fff;margin:0;font-weight:700;}
+body.player-site .classy-quiz #optionsContainer{display:grid;gap:12px;}
+body.player-site .classy-quiz .option{background:#111e30!important;border:1px solid #2a3b52!important;border-radius:10px!important;padding:15px 16px!important;color:#fff!important;min-height:58px;box-shadow:none!important;}
+body.player-site .classy-quiz .option:hover{border-color:#64748b!important;transform:none!important;}
+body.player-site .classy-quiz .option.selected{border-color:#16a34a!important;background:#101d2b!important;}
+body.player-site .classy-quiz .option .option-letter{background:#0d6b3d!important;color:#fff!important;border-radius:5px!important;}
+body.player-site .classy-quiz .next-btn{display:block;width:210px;margin:26px auto 4px;border-radius:8px;background:#2563eb;color:#fff;}
+body.player-site .classy-quiz .violation-box{text-align:center;border:0;background:transparent;color:#94a3b8;padding:8px;}
+
+/* ADMIN: fixed left navigation + white preview workspace like reference */
+body:not(.player-site) .admin-shell{background:#07101d;}
+body:not(.player-site) .admin-sidebar{background:linear-gradient(180deg,#07101d,#0b1626);border-right:1px solid #233147;}
+body:not(.player-site) .admin-main{background:#07101d;}
+body:not(.player-site) .topbar{background:#07101d;border-bottom:1px solid #233147;}
+body:not(.player-site) .admin-section{max-width:none;}
+body:not(.player-site) #createSection{padding-top:8px;}
+body:not(.player-site) #createSection>.section-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+body:not(.player-site) #createSection>.section-heading h2{font-size:22px;}
+body:not(.player-site) .reference-editor-stage{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;}
+body:not(.player-site) .reference-preview-card,body:not(.player-site) .reference-edit-card{background:#fff;color:#111;border:1px solid #d6dbe2;border-radius:10px;padding:18px;box-shadow:0 8px 20px rgba(0,0,0,.18);}
+body:not(.player-site) .reference-preview-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+body:not(.player-site) .reference-preview-title{font-size:18px;font-weight:800;}
+body:not(.player-site) .reference-breadcrumb{color:#cbd5e1;font-size:14px;margin-bottom:10px;}
+body:not(.player-site) .reference-preview-question{font-size:22px;line-height:1.55;font-weight:700;margin:8px 0 14px;}
+body:not(.player-site) .reference-preview-options{display:grid;gap:8px;}
+body:not(.player-site) .reference-preview-option{border:1px solid #d5dbe3;border-radius:8px;padding:10px 12px;background:#fff;}
+body:not(.player-site) .reference-preview-option .letter{display:inline-flex;width:28px;height:28px;align-items:center;justify-content:center;background:#e8f7ee;color:#138a4a;border-radius:6px;font-weight:800;margin-right:8px;}
+body:not(.player-site) .reference-preview-actions{display:flex;gap:10px;margin-top:14px;}
+body:not(.player-site) .reference-preview-actions button{padding:10px 14px;border-radius:7px;font-size:14px;}
+body:not(.player-site) .reference-edit-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:18px;font-weight:800;}
+body:not(.player-site) .reference-edit-card .form-group label{color:#111;}
+body:not(.player-site) .reference-edit-card textarea,body:not(.player-site) .reference-edit-card input,body:not(.player-site) .reference-edit-card select{background:#fff;color:#111;border:1px solid #cbd5e1;}
+body:not(.player-site) .reference-tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+body:not(.player-site) .reference-tools .editor-menu-item{padding:8px 12px;border:1px solid #334155;background:#0f1b2c;color:#fff;border-radius:7px;}
+body:not(.player-site) .reference-tools .editor-menu-item.active{background:#2563eb;border-color:#2563eb;}
+body:not(.player-site) #createSection>.editor-workspace{display:block;}
+body:not(.player-site) #createSection>.editor-workspace>.editor-menu{display:none;}
+body:not(.player-site) #createSection>.editor-workspace>.editor-panels{width:100%;}
+body:not(.player-site) #createSection>.editor-workspace>.editor-panels .editor-panel{display:none;}
+body:not(.player-site) #createSection>.editor-workspace>.editor-panels .editor-panel.active-editor-panel{display:none;}
+body:not(.player-site) .reference-edit-card .reference-question-form{display:block;}
+body:not(.player-site) .reference-edit-card .reference-question-form .admin-grid{grid-template-columns:1fr 1fr;}
+
+@media(max-width:900px){
+ body:not(.player-site) .reference-edit-card .reference-question-form .admin-grid{grid-template-columns:1fr;}
+ body.player-site .classy-quiz #questionText{font-size:22px;}
+}
+/* Full builder remains available when requested; reference preview is the default presentation. */
+body:not(.player-site) #createSection.reference-builder-open>.reference-editor-stage{display:none;}
+body:not(.player-site) #createSection.reference-builder-open>.editor-workspace{display:block;}
+body:not(.player-site) #createSection.reference-builder-open>.editor-workspace>.editor-menu{display:flex;}
+body:not(.player-site) #createSection.reference-builder-open>.editor-workspace>.editor-panels .editor-panel.active-editor-panel{display:block;}
+body:not(.player-site) #createSection.reference-builder-open>.editor-workspace>.editor-panels .editor-panel{display:none;}

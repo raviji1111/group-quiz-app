@@ -30,6 +30,12 @@ router.post('/start', optionalPlayer, async (req, res) => {
     if (!player) return res.status(401).json({ code: 'AUTH_REQUIRED', message: 'Your account could not be found. Please register or login again.' });
     if (player.active === false) return res.status(403).json({ message: 'Your account is suspended. Please contact the administrator.' });
     const playerName = player.name;
+    // A player may submit a LIVE only once per LIVE run. A future launch of the
+    // same saved quiz is allowed because its liveLaunchAt changes.
+    if (quiz.liveStatus === 'live' && quiz.liveLaunchAt) {
+      const submittedThisRun = await Attempt.findOne({ quiz: quiz._id, player: playerId, createdAt: { $gte: new Date(quiz.liveLaunchAt) } }).select('_id');
+      if (submittedThisRun) return res.status(409).json({ code: 'LIVE_ALREADY_SUBMITTED', message: 'You have already submitted this LIVE quiz. Please wait for the result.' });
+    }
     const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const safePlayerName = escapeRegex(playerName);
     const playerFilter = playerId ? { player: playerId } : { player: null, playerName: new RegExp(`^${safePlayerName}$`, 'i') };
@@ -135,6 +141,7 @@ router.post('/', optionalPlayer, async (req, res) => {
 
     const attempt = await Attempt.create({ quiz: quiz._id, player: session.player || null, playerName: session.playerName, answers: safeAnswers, score, total, percentage, violations, violationReasons, status });
     session.submitted = true;
+    session.submittedAt = new Date();
     session.answers = safeAnswers;
     session.violations = violations;
     session.violationReasons = violationReasons;
@@ -149,9 +156,10 @@ router.post('/', optionalPlayer, async (req, res) => {
 
 router.get('/stats', requireAdmin, async (req, res) => {
   try {
+    const filter = req.query.quizId ? { quiz: req.query.quizId } : {};
     const [totalAttempts, aggregate] = await Promise.all([
-      Attempt.countDocuments(),
-      Attempt.aggregate([{ $group: { _id: null, avgPercentage: { $avg: '$percentage' }, totalViolations: { $sum: '$violations' } } }])
+      Attempt.countDocuments(filter),
+      Attempt.aggregate([{ $match: filter }, { $group: { _id: null, avgPercentage: { $avg: '$percentage' }, totalViolations: { $sum: '$violations' } } }])
     ]);
     res.json({ totalAttempts, avgPercentage: aggregate[0]?.avgPercentage || 0, totalViolations: aggregate[0]?.totalViolations || 0 });
   } catch (error) {

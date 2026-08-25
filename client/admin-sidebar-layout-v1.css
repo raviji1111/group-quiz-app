@@ -1,0 +1,26 @@
+/* Admin Sidebar Layout v1 — menu and content move together. */
+@media (min-width: 901px) {
+  body:not(.player-site) .admin-main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    transition: margin-left .25s ease, width .25s ease, padding .25s ease;
+  }
+
+  /* Expanded menu: content makes room for the sidebar instead of leaving a dead gap. */
+  body:not(.player-site).sidebar-open .admin-main,
+  body:not(.player-site) .admin-shell:has(.admin-sidebar:hover) .admin-main {
+    margin-left: 244px !important;
+    width: calc(100% - 244px) !important;
+  }
+
+  body:not(.player-site) .admin-shell {
+    overflow-x: hidden;
+  }
+}
+
+@media (max-width: 900px) {
+  body:not(.player-site) .admin-main {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+}

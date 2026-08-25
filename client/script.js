@@ -352,7 +352,9 @@ function renderLiveCards(quizzes) {
     card.querySelector('strong').textContent = q.subject || 'General'; card.querySelector('p').textContent = `Topic: ${q.topic || 'General'}`; card.querySelector('h3').textContent = q.title;
     const btn = card.querySelector('button');
     btn.type = 'button';
+    if (q.alreadySubmitted) { btn.disabled = true; btn.textContent = '✓ Submitted — Result Coming'; card.classList.add('live-already-submitted'); }
     btn.onclick = async (event) => {
+      if (q.alreadySubmitted) return;
       event.preventDefault();
       event.stopPropagation();
       const st = liveState(q, Date.now());
@@ -376,14 +378,16 @@ function renderLiveCards(quizzes) {
   const tick = () => {
     const now = Date.now();
     cards.forEach(({q,btn,status,count}) => {
-      const st = liveState(q, now); status.textContent = st.label; count.textContent = st.key === 'running' ? `Live closes in ${formatCountdown(st.countdown)}` : st.key === 'ended' ? 'This LIVE has ended.' : `Countdown: ${formatCountdown(st.countdown)}`;
-      btn.disabled = !['join-open','running'].includes(st.key);
+      const st = liveState(q, now); status.textContent = q.alreadySubmitted ? '✓ SUBMITTED' : st.label; count.textContent = q.alreadySubmitted ? 'Result coming soon.' : (st.key === 'running' ? `Live closes in ${formatCountdown(st.countdown)}` : st.key === 'ended' ? 'This LIVE has ended.' : `Countdown: ${formatCountdown(st.countdown)}`);
+      btn.disabled = q.alreadySubmitted || !['join-open','running'].includes(st.key);
       btn.textContent = st.key === 'join-open' ? 'Join Live Quiz →' : st.key === 'running' ? 'Join Live Quiz →' : st.key === 'before-join' ? 'Join opens later' : st.key === 'starting' ? 'Joining closed' : 'Live ended';
       status.className = `live-card-status state-${st.key}`;
     });
   };
   tick(); liveCardTimer = setInterval(tick, 1000);
 }
+
+window.api = api; window.renderLiveCards = renderLiveCards; window.loggedPlayer = loggedPlayer; window.playerToken = playerToken;
 
 async function startQuiz(forcedQuizId = null, forcedLive = null) {
   if (!loggedPlayer || !playerToken) { accountPanel.classList.remove('hidden'); return playerMessage('Please register or login before attempting a quiz.', true); }

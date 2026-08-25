@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Group Quiz — Admin Dashboard</title><link rel="stylesheet" href="style.css">
+<title>Group Quiz — Admin Dashboard</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="reference-ui-v2.css">
 </head>
 <body>
 <section id="loginView" class="admin-login-page">
@@ -231,13 +231,14 @@ Answer: D"></textarea></div>
         <p id="directLiveMessage" class="admin-message"></p><div id="directLivePreview" class="direct-live-preview"></div>
       </section>
       <div id="liveQuizCards" class="live-admin-grid"></div>
-      <section class="admin-card live-board-card"><div class="section-header"><div><span class="card-eyebrow">LIVE BOARD</span><h3 id="liveBoardTitle">Select a live quiz</h3><p id="liveBoardMeta" class="card-muted">Participants and scores refresh automatically.</p></div><button id="refreshLiveBoardBtn" class="secondary-btn">↻ Refresh</button></div><div class="live-metrics"><div><span>Participants</span><strong id="liveParticipants">0</strong></div><div><span>Active</span><strong id="liveActive">0</strong></div><div><span>Submitted</span><strong id="liveSubmitted">0</strong></div></div><div class="table-wrap"><table><thead><tr><th>Rank</th><th>Student</th><th>Score</th><th>Answered</th><th>Status</th><th>Control</th></tr></thead><tbody id="liveBoardBody"></tbody></table></div></section>
+      <section class="admin-card live-board-card"><div class="section-header"><div><span class="card-eyebrow">LIVE BOARD</span><h3 id="liveBoardTitle">Select a live quiz</h3><p id="liveBoardMeta" class="card-muted">Participants and scores refresh automatically.</p><p data-live-performance class="card-muted">Performance statistics appear after selecting a LIVE quiz.</p></div><button id="refreshLiveBoardBtn" class="secondary-btn">↻ Refresh</button></div><div class="live-metrics"><div><span>Participants</span><strong id="liveParticipants">0</strong></div><div><span>Active</span><strong id="liveActive">0</strong></div><div><span>Submitted</span><strong id="liveSubmitted">0</strong></div></div><div class="table-wrap"><table><thead><tr><th>Rank</th><th>Student</th><th>Score</th><th>Answered</th><th>Status</th><th>Control</th></tr></thead><tbody id="liveBoardBody"></tbody></table></div></section>
     </section>
     <section id="leaderboardSection" class="admin-section"><div class="section-heading"><div><h2>Leaderboard</h2><p>Top performers by quiz or across the platform.</p></div><button id="refreshLeaderboardBtn" class="secondary-btn">↻ Refresh</button></div><section class="admin-card"><div class="filter-row"><label>Quiz</label><select id="leaderboardQuizFilter"><option value="">All quizzes</option></select></div><div class="table-wrap"><table><thead><tr><th>Rank</th><th>Student</th><th>Attempts</th><th>Best</th><th>Average</th></tr></thead><tbody id="leaderboardBody"></tbody></table></div></section></section>
   </main>
 </section>
 
 <div id="attemptModal" class="modal hidden"><div class="modal-card"><div class="section-header"><div><h2>Attempt Details</h2><p id="attemptMeta" class="card-muted"></p></div><button id="closeAttemptModal" class="secondary-btn">✕</button></div><div id="attemptDetailBody"></div></div></div>
-<script src="live-admin-control.js"></script>
-<script src="live-result-controls.js"></script><script src="live-export.js"></script><script src="live-announcements.js"></script><script src="live-pause-resume.js"></script><script src="admin.js"></script>
+<script src="live-admin-control.js"></script><script src="live-performance.js"></script>
+<script src="live-result-controls.js"></script><script src="live-export.js"></script><script src="live-announcements.js"></script><script src="live-pause-resume.js"></script><script src="live-saved-launch.js"></script><script src="admin.js"></script><script src="live-results-filter-fix.js"></script><script src="reference-ui-v2.js"></script>
 </body></html>
+

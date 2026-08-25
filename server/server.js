@@ -9,6 +9,7 @@ const attemptRoutes = require('./routes/attempts');
 const playerAuthRoutes = require('./routes/playerAuth');
 const playerRoutes = require('./routes/players');
 const liveRoutes = require('./routes/live');
+const liveAnalyticsRoutes = require('./routes/liveAnalytics');
 const { ensureAdmin } = require('./utils/seedAdmin');
 
 const app = express();
@@ -25,6 +26,15 @@ app.use('/api/attempts', attemptRoutes);
 app.use('/api/player', playerAuthRoutes);
 app.use('/api/players', playerRoutes);
 app.use('/api/live', liveRoutes);
+app.use('/api/live-analytics', liveAnalyticsRoutes);
+
+// Keep one predictable JSON error shape for API failures not handled by a route.
+app.use('/api', (req, res) => res.status(404).json({ message: 'API route not found.' }));
+app.use((error, req, res, next) => {
+  console.error('Unhandled request error:', error.message);
+  if (res.headersSent) return next(error);
+  res.status(error.status || 500).json({ message: error.status ? error.message : 'Unexpected server error.' });
+});
 
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, '..', 'client', 'admin.html')));
 app.get('*splat', (req, res) => res.sendFile(path.join(__dirname, '..', 'client', 'index.html')));
@@ -42,3 +52,4 @@ start().catch(error => {
   console.error('Startup failed:', error.message);
   process.exit(1);
 });
+

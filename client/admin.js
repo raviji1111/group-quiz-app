@@ -639,7 +639,7 @@ const originalHistoryLoader=oldLoadStatsAndHistory;
 loadStatsAndHistory=async function(quizId=''){
   try{
     const path=quizId?`/attempts?quizId=${encodeURIComponent(quizId)}`:'/attempts';
-    const [stats,history]=await Promise.all([api('/attempts/stats'),api(path)]); window.__lastAttempts=history.attempts||[];
+    const [stats,history]=await Promise.all([api(quizId?`/attempts/stats?quizId=${encodeURIComponent(quizId)}`:'/attempts/stats'),api(path)]); window.__lastAttempts=history.attempts||[];
     $('statAttempts').textContent=stats.totalAttempts;$('statAverage').textContent=`${Number(stats.avgPercentage).toFixed(1)}%`;$('statViolations').textContent=stats.totalViolations;
     const body=$('historyBody');body.innerHTML='';$('historyTitle').textContent=quizId?`Attempts — ${$('attemptQuizFilter').selectedOptions[0]?.textContent||'Quiz'}`:'Quiz Attempts';
     if(!history.attempts.length){body.innerHTML='<tr><td colspan="7">No attempts found for this quiz.</td></tr>';return;}
@@ -827,6 +827,7 @@ async function loadLiveQuizCards() {
         actions.append(monitor,end);
       } else {
         const start = document.createElement('button'); start.className='small-btn live-start-btn'; start.textContent='🚀 Start Live'; start.onclick=async()=>{
+          if (window.LiveSavedLaunch?.open) return window.LiveSavedLaunch.open(q);
           const duration=Number(prompt(`Live duration in minutes for “${q.title}”`, q.liveDuration || q.time || 30));
           if(!Number.isInteger(duration)||duration<1||duration>180)return;
           try { await api(`/live/${q._id}/start`,{method:'POST',body:JSON.stringify({duration,showLiveScore:q.showLiveScore!==false,showLeaderboard:q.showLeaderboard!==false})}); liveBoardQuizId=q._id; await loadLiveQuizCards(); await loadLiveBoard(q._id); }
@@ -843,6 +844,8 @@ async function loadLiveQuizCards() {
 async function loadLiveBoard(id = liveBoardQuizId) {
   if (!id || !$('liveBoardBody')) return;
   liveBoardQuizId=id;
+  // Phase 4 statistics use their own module and lifecycle.
+  window.LivePerformance?.start(id);
   try {
     const data=await api(`/live/${id}/admin-board`);
     $('liveBoardTitle').textContent=data.quiz.title;
@@ -863,7 +866,11 @@ async function loadLiveBoard(id = liveBoardQuizId) {
     });
   } catch(e) { showMessage(e.message,true); }
 }
+window.loadLiveQuizCards = loadLiveQuizCards;
+window.loadLiveBoard = loadLiveBoard;
+window.openAdminSection = openAdminSection;
 
 $('refreshLiveBoardBtn')?.addEventListener('click',()=>loadLiveBoard());
 document.querySelector('.nav-item[data-section="liveSection"]')?.addEventListener('click',()=>{loadLiveQuizCards(); if(liveBoardQuizId)loadLiveBoard(liveBoardQuizId);});
 setInterval(()=>{if(document.getElementById('liveSection')?.classList.contains('active-section')){loadLiveQuizCards();if(liveBoardQuizId)loadLiveBoard(liveBoardQuizId);}},5000);
+

@@ -4,9 +4,19 @@ const Quiz = require('../models/Quiz');
 const QuizSession = require('../models/QuizSession');
 const Attempt = require('../models/Attempt');
 const { requireAdmin } = require('../middleware/auth');
-const { requirePlayer } = require('../middleware/playerAuth');
+const { requirePlayer, optionalPlayer } = require('../middleware/playerAuth');
+const { currentLiveRunFilter } = require('../utils/live-run-scope');
+const LiveAuditEvent = require('../models/LiveAuditEvent');
+const { rateLimit, hashIp, requireObjectId } = require('../middleware/liveSecurity');
 
 const router = express.Router();
+
+async function audit(req, quiz, action, metadata = {}, session = null) {
+  // Auditing must not make the primary LIVE action fail; errors are logged only.
+  try {
+    await LiveAuditEvent.create({ quiz, session, action, metadata, ipHash: hashIp(req), actorType: req.admin ? 'admin' : req.player ? 'player' : 'system', actorId: String(req.admin?.id || req.player?.id || '') });
+  } catch (error) { console.error('LIVE audit write failed:', error.message); }
+}
 
 
 async function finalizeExpiredLiveQuiz(quiz) {
@@ -25,6 +35,7 @@ async function finalizeExpiredLiveQuiz(quiz) {
     const percentage = total ? Math.round((score / total) * 10000) / 100 : 0;
     await Attempt.create({ quiz: quiz._id, player: session.player || null, playerName: session.playerName, answers: safeAnswers, score, total, percentage, violations: session.violations || 0, violationReasons: session.violationReasons || [], status: 'auto-submitted' });
     session.submitted = true;
+    session.submittedAt = new Date();
     await session.save();
   }
   return true;
@@ -38,7 +49,7 @@ setInterval(async () => {
   } catch (e) { console.error('Live auto-close error:', e.message); }
 }, 5000);
 
-router.get('/active', requirePlayer, async (req, res) => {
+router.get('/active', optionalPlayer, async (req, res) => {
   try {
     const now = new Date();
     const candidates = await Quiz.find({ liveStatus: 'live', liveEndsAt: { $gt: now } });
@@ -49,11 +60,22 @@ router.get('/active', requirePlayer, async (req, res) => {
     const quizzes = await Quiz.find({ liveStatus: 'live', liveEndsAt: { $gt: now } })
       .select('_id title subject topic time questions.question questions.options liveLaunchAt liveJoinOpenAt liveJoinCloseAt liveStartedAt liveEndsAt showLiveScore showLeaderboard')
       .sort({ liveStartedAt: 1, liveLaunchAt: -1 });
-    res.json({ quizzes });
+    const ids = quizzes.map(q => q._id);
+    // The query above is intentionally narrowed below per quiz launch time so
+    // an old attempt from a previous LIVE run does not block a new run.
+    const submittedRuns = new Set();
+    if (ids.length && req.player?.id) {
+      const attempts = await Attempt.find({ player: req.player.id, quiz: { $in: ids } }).select('quiz createdAt');
+      for (const a of attempts) {
+        const q = quizzes.find(x => String(x._id) === String(a.quiz));
+        if (q?.liveLaunchAt && new Date(a.createdAt) >= new Date(q.liveLaunchAt)) submittedRuns.add(String(a.quiz));
+      }
+    }
+    res.json({ quizzes: quizzes.map(q => ({ ...q.toObject(), alreadySubmitted: submittedRuns.has(String(q._id)) })) });
   } catch (e) { res.status(500).json({ message: 'Could not load live quizzes.' }); }
 });
 
-router.post('/heartbeat/:sessionId', requirePlayer, async (req,res)=>{
+router.post('/heartbeat/:sessionId', requirePlayer, rateLimit({ max: 30, windowMs: 60_000 }), requireObjectId('sessionId'), async (req,res)=>{
   try {
     const session=await QuizSession.findById(req.params.sessionId);
     if(!session || !session.player || String(session.player)!==String(req.player.id) || session.submitted) return res.status(404).json({message:'Session not active.'});
@@ -61,14 +83,16 @@ router.post('/heartbeat/:sessionId', requirePlayer, async (req,res)=>{
   } catch(e){res.status(400).json({message:'Heartbeat failed.'});}
 });
 
-router.post('/session/:sessionId/force-submit', requireAdmin, async (req,res)=>{
+router.post('/session/:sessionId/force-submit', requireAdmin, rateLimit({ max: 20 }), requireObjectId('sessionId'), async (req,res)=>{
   try {
     const session=await QuizSession.findById(req.params.sessionId); if(!session) return res.status(404).json({message:'Session not found.'});
     if(session.submitted) return res.status(409).json({message:'Session already submitted.'});
     const quiz=await Quiz.findById(session.quiz); if(!quiz) return res.status(404).json({message:'Quiz not found.'});
     const answers=Array.isArray(session.answers)?session.answers:[]; let score=0; quiz.questions.forEach((q,i)=>{if(answers[i]===q.answer)score++;});
     const attempt=await Attempt.create({quiz:quiz._id,player:session.player,playerName:session.playerName,answers,score,total:quiz.questions.length,percentage:quiz.questions.length?Math.round(score/quiz.questions.length*10000)/100:0,violations:session.violations||0,violationReasons:session.violationReasons||[],status:'auto-submitted'});
-    session.submitted=true; session.submittedAt=new Date(); await session.save(); res.json({ok:true,attemptId:attempt._id});
+    session.submitted=true; session.submittedAt=new Date(); await session.save();
+    await audit(req, quiz._id, 'force-submit', { participant: session.playerName }, session._id);
+    res.json({ok:true,attemptId:attempt._id});
   } catch(e){console.error(e);res.status(400).json({message:'Could not force submit participant.'});}
 });
 
@@ -174,7 +198,7 @@ router.get('/:id/admin-board', requireAdmin, async (req,res)=>{
   try {
     const quiz=await Quiz.findById(req.params.id).select('_id title subject topic liveStatus liveStartedAt liveEndsAt showLiveScore showLeaderboard questions.answer');
     if(!quiz)return res.status(404).json({message:'Quiz not found.'});
-    const sessions=await QuizSession.find({quiz:quiz._id}).select('_id playerName answers submitted startedAt joinedAt lastSeenAt');
+    const sessions=await QuizSession.find(currentLiveRunFilter(quiz)).select('_id player playerName answers submitted startedAt joinedAt lastSeenAt');
     const rows=sessions.map(s=>{let score=0; quiz.questions.forEach((q,i)=>{if(s.answers?.[i]===q.answer)score++;}); return {sessionId:s._id,playerName:s.playerName,score,total:quiz.questions.length,answered:(s.answers||[]).filter(a=>a>=0).length,submitted:s.submitted,joinedAt:s.joinedAt,lastSeenAt:s.lastSeenAt};}).sort((a,b)=>b.score-a.score||a.answered-b.answered);
     res.json({quiz,participants:rows.length,active:rows.filter(x=>!x.submitted).length,submitted:rows.filter(x=>x.submitted).length,leaderboard:rows.map((r,i)=>({...r,rank:i+1}))});
   }catch(e){res.status(400).json({message:'Could not load live board.'});}
@@ -182,7 +206,20 @@ router.get('/:id/admin-board', requireAdmin, async (req,res)=>{
 
 router.patch('/:id/settings', requireAdmin, async (req,res)=>{try{const q=await Quiz.findById(req.params.id);if(!q)return res.status(404).json({message:'Quiz not found.'});if(typeof req.body.showLiveScore==='boolean')q.showLiveScore=req.body.showLiveScore;if(typeof req.body.showLeaderboard==='boolean')q.showLeaderboard=req.body.showLeaderboard;await q.save();res.json({ok:true,quiz:q});}catch(e){res.status(400).json({message:'Could not save result settings.'});}});
 router.get('/:id/state', requirePlayer, async (req,res)=>{try{const q=await Quiz.findById(req.params.id).select('liveStatus livePaused liveAnnouncement liveEndsAt');if(!q)return res.status(404).json({message:'Live quiz not found.'});res.json({liveStatus:q.liveStatus,paused:!!q.livePaused,announcement:q.liveAnnouncement||'',liveEndsAt:q.liveEndsAt});}catch(e){res.status(400).json({message:'Could not load live state.'});}});
-router.post('/:id/pause', requireAdmin, async (req,res)=>{try{const q=await Quiz.findById(req.params.id);if(!q)return res.status(404).json({message:'Quiz not found.'});q.livePaused=req.body.paused!==false;await q.save();res.json({ok:true,paused:q.livePaused});}catch(e){res.status(400).json({message:'Could not change LIVE pause state.'});}});
-router.post('/:id/announcement', requireAdmin, async (req,res)=>{try{const q=await Quiz.findById(req.params.id);if(!q)return res.status(404).json({message:'Quiz not found.'});q.liveAnnouncement=String(req.body.message||'').trim().slice(0,200);await q.save();res.json({ok:true,message:q.liveAnnouncement});}catch(e){res.status(400).json({message:'Could not send announcement.'});}});
-router.get('/:id/export.csv', requireAdmin, async (req,res)=>{try{const q=await Quiz.findById(req.params.id).select('title questions.answer');if(!q)return res.status(404).send('Quiz not found');const rows=await QuizSession.find({quiz:q._id}).select('playerName answers submitted submittedAt joinedAt');const esc=v=>`"${String(v??'').replace(/"/g,'""')}"`;let csv='Rank,Student,Score,Total,Percentage,Status,Joined At,Submitted At\n';const out=rows.map(s=>{let score=0;(q.questions||[]).forEach((x,i)=>{if(s.answers?.[i]===x.answer)score++;});const total=q.questions.length;return {name:s.playerName,score,total,pct:total?Math.round(score/total*10000)/100:0,status:s.submitted?'Submitted':'Active',joined:s.joinedAt,submitted:s.submittedAt};}).sort((a,b)=>b.pct-a.pct);out.forEach((r,i)=>csv+=`${i+1},${esc(r.name)},${r.score},${r.total},${r.pct},${r.status},${esc(r.joined)},${esc(r.submitted)}\n`);res.setHeader('Content-Type','text/csv; charset=utf-8');res.setHeader('Content-Disposition',`attachment; filename="live-results-${q._id}.csv"`);res.send(csv);}catch(e){res.status(400).send('Could not export LIVE results.');}});
+router.post('/:id/pause', requireAdmin, rateLimit({ max: 20 }), requireObjectId('id'), async (req,res)=>{try{
+  const q=await Quiz.findById(req.params.id);if(!q)return res.status(404).json({message:'Quiz not found.'});
+  if(q.liveStatus!=='live')return res.status(409).json({message:'Only an active LIVE quiz can be paused.'});
+  const shouldPause=req.body.paused!==false;
+  if(shouldPause && !q.livePaused){q.livePaused=true;q.livePausedAt=new Date();}
+  if(!shouldPause && q.livePaused){
+    const pausedMs=Math.max(0,Date.now()-new Date(q.livePausedAt||Date.now()).getTime());
+    // Resume extends all relevant windows so pausing truly freezes the quiz clock.
+    for(const field of ['liveEndsAt','liveJoinCloseAt','liveStartedAt'])if(q[field])q[field]=new Date(new Date(q[field]).getTime()+pausedMs);
+    q.liveTotalPausedMs=Number(q.liveTotalPausedMs||0)+pausedMs;q.livePaused=false;q.livePausedAt=null;
+  }
+  await q.save();await audit(req,q._id,shouldPause?'pause':'resume',{liveEndsAt:q.liveEndsAt});res.json({ok:true,paused:q.livePaused,liveEndsAt:q.liveEndsAt});
+}catch(e){res.status(400).json({message:'Could not change LIVE pause state.'});}});
+router.post('/:id/announcement', requireAdmin, rateLimit({ max: 20 }), requireObjectId('id'), async (req,res)=>{try{const q=await Quiz.findById(req.params.id);if(!q)return res.status(404).json({message:'Quiz not found.'});q.liveAnnouncement=String(req.body.message||'').trim().replace(/[<>]/g,'').slice(0,200);await q.save();await audit(req,q._id,'announcement',{length:q.liveAnnouncement.length});res.json({ok:true,message:q.liveAnnouncement});}catch(e){res.status(400).json({message:'Could not send announcement.'});}});
+router.get('/:id/export.csv', requireAdmin, async (req,res)=>{try{const q=await Quiz.findById(req.params.id).select('title questions.answer');if(!q)return res.status(404).send('Quiz not found');const rows=await QuizSession.find(currentLiveRunFilter(q)).select('playerName answers submitted submittedAt joinedAt');const esc=v=>`"${String(v??'').replace(/"/g,'""')}"`;let csv='Rank,Student,Score,Total,Percentage,Status,Joined At,Submitted At\n';const out=rows.map(s=>{let score=0;(q.questions||[]).forEach((x,i)=>{if(s.answers?.[i]===x.answer)score++;});const total=q.questions.length;return {name:s.playerName,score,total,pct:total?Math.round(score/total*10000)/100:0,status:s.submitted?'Submitted':'Active',joined:s.joinedAt,submitted:s.submittedAt};}).sort((a,b)=>b.pct-a.pct);out.forEach((r,i)=>csv+=`${i+1},${esc(r.name)},${r.score},${r.total},${r.pct},${r.status},${esc(r.joined)},${esc(r.submitted)}\n`);res.setHeader('Content-Type','text/csv; charset=utf-8');res.setHeader('Content-Disposition',`attachment; filename="live-results-${q._id}.csv"`);res.send(csv);}catch(e){res.status(400).send('Could not export LIVE results.');}});
 module.exports=router;
+

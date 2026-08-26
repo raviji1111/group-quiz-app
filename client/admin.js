@@ -153,7 +153,7 @@ $('clearQuestionsBtn').addEventListener('click', () => { if (questions.length &&
 
 function quizPayload() {
   const toISO = id => { const v = $(id).value; return v ? new Date(v).toISOString() : null; };
-  return { title: $('quizTitle').value.trim(), subject: $('quizSubject').value.trim() || 'General', topic: $('quizTopic').value.trim() || 'General', time: Number($('quizTime').value), maxViolations: Number($('maxViolations').value), examMode: $('examMode').value === 'on', joinStartAt: toISO('joinStartAt'), joinEndAt: toISO('joinEndAt'), scheduledStartAt: toISO('scheduledStartAt'), liveDuration: Number($('liveDuration').value || 30), liveJoinOpenAfter: Number($('liveJoinOpenAfter')?.value || 0), liveJoinCloseAfter: Number($('liveJoinCloseAfter')?.value || 0), liveStartAfter: Number($('liveStartAfter')?.value || 0), liveCloseAfter: Number($('liveCloseAfter')?.value || 0), showLiveScore: $('showLiveScore').value === 'on', showLeaderboard: $('showLeaderboard').value === 'on', questions };
+  return { title: $('quizTitle').value.trim(), subject: $('quizSubject').value.trim() || 'General', topic: $('quizTopic').value.trim() || 'General', time: Number($('quizTime').value), maxViolations: Number($('maxViolations').value), examMode: $('examMode').value === 'on', joinStartAt: toISO('joinStartAt'), joinEndAt: toISO('joinEndAt'), scheduledStartAt: toISO('scheduledStartAt'), liveDuration: Number($('liveDuration').value || 30), liveJoinOpenAfter: Number($('liveJoinOpenAfter')?.value || 0), liveJoinCloseAfter: Number($('liveJoinCloseAfter')?.value || 0), liveStartAfter: Number($('liveStartAfter')?.value || 0), liveCloseAfter: Number($('liveCloseAfter')?.value || $('liveDuration')?.value || $('quizTime')?.value || 30), showLiveScore: $('showLiveScore').value === 'on', showLeaderboard: $('showLeaderboard').value === 'on', questions };
 }
 
 $('saveQuizBtn').addEventListener('click', async () => {
@@ -214,7 +214,7 @@ async function editQuiz(id) {
   if($('liveJoinOpenAfter')) $('liveJoinOpenAfter').value = quiz.liveJoinOpenAfter || 0;
   if($('liveJoinCloseAfter')) $('liveJoinCloseAfter').value = quiz.liveJoinCloseAfter || 0;
   if($('liveStartAfter')) $('liveStartAfter').value = quiz.liveStartAfter || 0;
-  if($('liveCloseAfter')) $('liveCloseAfter').value = quiz.liveCloseAfter || 0;
+  if($('liveCloseAfter')) $('liveCloseAfter').value = quiz.liveCloseAfter || quiz.liveDuration || quiz.time || 30;
   $('showLiveScore').value = quiz.showLiveScore === false ? 'off' : 'on';
   $('showLeaderboard').value = quiz.showLeaderboard === false ? 'off' : 'on';
     $('maxViolations').value = quiz.maxViolations;

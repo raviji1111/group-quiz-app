@@ -18,7 +18,7 @@ const quizSchema = new mongoose.Schema({
   liveJoinOpenAfter: { type: Number, default: 0, min: 0, max: 180 },
   liveJoinCloseAfter: { type: Number, default: 0, min: 0, max: 180 },
   liveStartAfter: { type: Number, default: 0, min: 0, max: 180 },
-  liveCloseAfter: { type: Number, default: 0, min: 1, max: 360 },
+  liveCloseAfter: { type: Number, default: 30, min: 1, max: 360 },
   liveLaunchAt: { type: Date, default: null },
   liveJoinOpenAt: { type: Date, default: null },
   liveJoinCloseAt: { type: Date, default: null },

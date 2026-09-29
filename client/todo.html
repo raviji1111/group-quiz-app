@@ -38,6 +38,25 @@
       <button id="todoRefresh" class="secondary-btn" type="button">↻ Refresh</button>
     </div>
 
+    <section class="todo-tasks-first" aria-label="My tasks">
+      <div class="todo-tasks-first-head">
+        <div><span class="card-eyebrow">YOUR GOALS</span><h2>My Tasks</h2><p>All your created tasks are shown here. Tap a task to open its progress and today’s actions.</p></div>
+        <button id="todoOpenCreate" class="todo-create-task-btn" type="button">＋ Create Task</button>
+      </div>
+      <div class="todo-toolbar todo-toolbar-tasks">
+        <div class="todo-search"><span>⌕</span><input id="todoSearch" type="search" placeholder="Search goals..." aria-label="Search goals"></div>
+        <div class="todo-filters">
+          <button type="button" class="todo-filter active" data-filter="all">All</button>
+          <button type="button" class="todo-filter" data-filter="pending">Active</button>
+          <button type="button" class="todo-filter" data-filter="today-done">Done Today</button>
+          <button type="button" class="todo-filter" data-filter="expired">Ended</button>
+          <button type="button" class="todo-filter" data-filter="high">High priority</button>
+        </div>
+      </div>
+      <div id="todoList" class="todo-list todo-list-first"></div>
+      <div id="todoEmpty" class="todo-empty hidden"><div class="todo-empty-icon">＋</div><h3>No tasks yet</h3><p>Create your first goal using the <b>Create Task</b> button.</p><button id="todoEmptyCreate" class="todo-create-task-btn" type="button">＋ Create Task</button></div>
+    </section>
+
     <div class="todo-today-banner">
       <div><span class="card-eyebrow">TODAY</span><strong id="todoTodayDate">Loading today...</strong></div>
       <div class="todo-today-banner-stats"><span><b id="todoDoneToday">0/0</b> done today</span><span><b id="todoDaysLeft">—</b> days left</span></div>
@@ -52,29 +71,24 @@
 
     <div id="todoMessage" class="todo-message" aria-live="polite"></div>
 
-    <form id="todoForm" class="todo-add-card">
-      <div class="todo-form-main">
-        <input id="todoTitle" type="text" maxlength="120" placeholder="What goal do you want to accomplish?" autocomplete="off" required>
-        <textarea id="todoNotes" maxlength="500" placeholder="Notes (optional)"></textarea>
-      </div>
-      <div class="todo-form-fields todo-goal-fields">
-        <label>Priority<select id="todoPriority"><option value="medium">Medium</option><option value="high">High</option><option value="low">Low</option></select></label>
-        <label>Duration<select id="todoDuration"><option value="day">1 Day</option><option value="week">1 Week</option><option value="month">1 Month</option><option value="year">1 Year</option><option value="custom90">90 Days</option><option value="custom">Custom Days</option></select></label>
-        <label id="todoCustomWrap" class="hidden">Days<input id="todoCustomDays" type="number" min="1" max="3650" value="7"></label>
-        <label>Category<select id="todoCategory"><option>Study</option><option>Practice</option><option>Revision</option><option>Personal</option><option>Other</option></select></label>
-        <button id="todoAddBtn" type="submit">＋ Add Task</button>
-      </div>
-      <p class="todo-form-help">Choose how long this task should run. Every task starts today. Mark each task Done or Not Done for today and save it. Previous and future days stay locked.</p>
-    </form>
-
-    <div class="todo-toolbar">
-      <div class="todo-search"><span>⌕</span><input id="todoSearch" type="search" placeholder="Search goals..."></div>
-      <div class="todo-filters">
-        <button type="button" class="todo-filter active" data-filter="all">All</button>
-        <button type="button" class="todo-filter" data-filter="pending">Active</button>
-        <button type="button" class="todo-filter" data-filter="today-done">Done Today</button>
-        <button type="button" class="todo-filter" data-filter="expired">Ended</button>
-        <button type="button" class="todo-filter" data-filter="high">High priority</button>
+    <div id="todoCreateModal" class="todo-modal hidden" aria-hidden="true">
+      <div class="todo-modal-backdrop" data-close-todo-modal></div>
+      <div class="todo-modal-panel" role="dialog" aria-modal="true" aria-labelledby="todoModalTitle">
+        <div class="todo-modal-head"><div><span class="card-eyebrow">TASK BUILDER</span><h2 id="todoModalTitle">Create Task</h2></div><button id="todoCloseCreate" class="todo-modal-close" type="button" aria-label="Close">×</button></div>
+        <form id="todoForm" class="todo-add-card">
+          <div class="todo-form-main">
+            <input id="todoTitle" type="text" maxlength="120" placeholder="What goal do you want to accomplish?" autocomplete="off" required>
+            <textarea id="todoNotes" maxlength="500" placeholder="Notes (optional)"></textarea>
+          </div>
+          <div class="todo-form-fields todo-goal-fields">
+            <label>Priority<select id="todoPriority"><option value="medium">Medium</option><option value="high">High</option><option value="low">Low</option></select></label>
+            <label>Duration<select id="todoDuration"><option value="day">1 Day</option><option value="week">1 Week</option><option value="month">1 Month</option><option value="year">1 Year</option><option value="custom90">90 Days</option><option value="custom">Custom Days</option></select></label>
+            <label id="todoCustomWrap" class="hidden">Days<input id="todoCustomDays" type="number" min="1" max="3650" value="7"></label>
+            <label>Category<select id="todoCategory"><option>Study</option><option>Practice</option><option>Revision</option><option>Personal</option><option>Other</option></select></label>
+          </div>
+          <p class="todo-form-help">Every task starts today. Daily history is saved securely in the database, and previous/future dates stay locked.</p>
+          <div class="todo-modal-actions"><button id="todoCancelCreate" class="secondary-btn" type="button">Cancel</button><button id="todoAddBtn" type="submit">＋ Create Task</button></div>
+        </form>
       </div>
     </div>
 
@@ -109,8 +123,6 @@
       <div class="todo-report-foot"><span>Current streak: <b id="todoReportCurrentStreak">0 days</b></span><span>Longest streak: <b id="todoReportLongestStreak">0 days</b></span></div>
     </section>
 
-    <div id="todoList" class="todo-list"></div>
-    <div id="todoEmpty" class="todo-empty hidden"><div class="todo-empty-icon">✓</div><h3>No goals here</h3><p>Create a goal above. Each day will have its own progress record.</p></div>
   </section>
 </main>
 
@@ -141,6 +153,7 @@
 <script src="todo-dashboard.js"></script>
 <script src="todo-reports.js"></script>
 <script src="todo-insights.js"></script>
+<script src="todo-task-view.js"></script>
 <script src="todo-list.js"></script>
 </body>
 </html>

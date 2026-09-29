@@ -94,6 +94,9 @@
     const locked = beforeStart || expired || targetComplete;
     const remaining = daysLeft(task);
     const dailyNote = log.note || '';
+    const completedDays = Math.min(Number(task.durationDays || 1), (task.dailyLogs || []).filter(entry => entry.completed).length);
+    const targetDays = Math.max(1, Number(task.durationDays || 1));
+    const overallPercent = Math.min(100, Math.round((completedDays / targetDays) * 100));
     const statusText = targetComplete ? 'Target completed' : expired ? 'Target ended' : `${remaining} day${remaining === 1 ? '' : 's'} left`;
 
     const item = document.createElement('article');
@@ -111,26 +114,40 @@
               <h3>${escapeHtml(task.title)}</h3>
               <span class="todo-priority ${escapeHtml(task.priority)}">${escapeHtml(task.priority)}</span>
             </div>
-            ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ''}
             <div class="todo-meta">
               <span class="todo-category">${escapeHtml(task.category || 'Other')}</span>
               <span>🎯 ${escapeHtml(durationLabel(task))}</span>
               <span class="todo-days-left">${escapeHtml(statusText)}</span>
             </div>
+            <div class="todo-task-hint">Tap to view process <span>⌄</span></div>
           </div>
+        </div>
+        <div class="todo-task-summary">
+          <strong>${completedDays}/${targetDays}</strong><span>days complete</span>
+          <div class="todo-mini-progress"><i style="width:${overallPercent}%"></i></div>
+        </div>
+      </div>
+      <div class="todo-task-details" hidden>
+        <div class="todo-process-head"><div><span class="card-eyebrow">TASK PROCESS</span><strong>${overallPercent}% complete</strong></div><span>${completedDays} of ${targetDays} target days completed</span></div>
+        <div class="todo-process-bar"><i style="width:${overallPercent}%"></i></div>
+        <div class="todo-process-grid">
+          <div><span>Today</span><strong>${doneToday ? 'Done ✓' : 'Pending'}</strong></div>
+          <div><span>Deadline</span><strong>${escapeHtml(task.endDate || '—')}</strong></div>
+          <div><span>Remaining</span><strong>${remaining} day${remaining === 1 ? '' : 's'}</strong></div>
+        </div>
+        ${task.notes ? `<div class="todo-task-notes"><span>Notes</span><p>${escapeHtml(task.notes)}</p></div>` : ''}
+        <div class="todo-today-row">
+          <div class="todo-today-status ${doneToday ? 'is-done' : ''}">
+            <strong>${doneToday ? 'DONE TODAY' : 'NOT DONE TODAY'}</strong>
+            <span>${doneToday ? 'This task is marked complete for today.' : 'Mark Done when you finish this task today.'}</span>
+          </div>
+          <input class="todo-day-note" type="text" maxlength="500" value="${escapeHtml(dailyNote)}" placeholder="Today's note (optional)" ${locked ? 'disabled' : ''}>
         </div>
         <div class="todo-actions">
           <button type="button" class="todo-save-day" ${locked ? 'disabled' : ''}>${doneToday ? '✓ Done — Save' : 'Save Not Done'}</button>
           <button type="button" class="todo-edit">Edit</button>
           <button type="button" class="todo-delete">Delete</button>
         </div>
-      </div>
-      <div class="todo-today-row">
-        <div class="todo-today-status ${doneToday ? 'is-done' : ''}">
-          <strong>${doneToday ? 'DONE TODAY' : 'NOT DONE TODAY'}</strong>
-          <span>${doneToday ? 'This task is marked complete for today.' : 'Mark Done when you finish this task today.'}</span>
-        </div>
-        <input class="todo-day-note" type="text" maxlength="500" value="${escapeHtml(dailyNote)}" placeholder="Today's note (optional)" ${locked ? 'disabled' : ''}>
       </div>`;
 
     const check = item.querySelector('.todo-done-check');
@@ -152,6 +169,7 @@
     saveBtn.addEventListener('click', () => saveToday(task.id, check.checked, note.value));
     item.querySelector('.todo-edit').addEventListener('click', () => edit(task.id));
     item.querySelector('.todo-delete').addEventListener('click', () => remove(task.id));
+    window.TodoTaskView?.bind?.(item);
     return item;
   }
 
@@ -211,7 +229,25 @@
     if ($('todoCustomDays')) $('todoCustomDays').value = 7;
     $('todoCustomWrap')?.classList.add('hidden');
     editingId = null;
-    if ($('todoAddBtn')) $('todoAddBtn').textContent = '＋ Add Task';
+    if ($('todoAddBtn')) $('todoAddBtn').textContent = '＋ Create Task';
+    if ($('todoModalTitle')) $('todoModalTitle').textContent = 'Create Task';
+  }
+
+  function openTaskModal() {
+    const modal = $('todoCreateModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('todo-modal-open');
+  }
+
+  function closeTaskModal() {
+    const modal = $('todoCreateModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('todo-modal-open');
+    resetForm();
   }
 
   function formPayload() {
@@ -242,6 +278,7 @@
         setMessage('Task created and saved to database.', 'success');
       }
       resetForm();
+      closeTaskModal();
       render();
       window.TodoDashboard?.refresh?.();
       window.TodoReports?.refresh?.();
@@ -281,8 +318,9 @@
     $('todoCustomDays').value = task.durationDays || 7;
     $('todoCustomWrap')?.classList.toggle('hidden', task.durationType !== 'custom');
     $('todoAddBtn').textContent = '✓ Update Task';
-    $('todoTitle').focus();
-    $('todoForm').scrollIntoView({ behavior:'smooth', block:'center' });
+    if ($('todoModalTitle')) $('todoModalTitle').textContent = 'Edit Task';
+    openTaskModal();
+    setTimeout(() => $('todoTitle')?.focus(), 50);
   }
 
   async function remove(id) {
@@ -310,6 +348,12 @@
 
   function bind() {
     $('todoForm')?.addEventListener('submit', addOrUpdate);
+    $('todoOpenCreate')?.addEventListener('click', () => { resetForm(); openTaskModal(); setTimeout(() => $('todoTitle')?.focus(), 50); });
+    $('todoEmptyCreate')?.addEventListener('click', () => { resetForm(); openTaskModal(); setTimeout(() => $('todoTitle')?.focus(), 50); });
+    $('todoCloseCreate')?.addEventListener('click', closeTaskModal);
+    $('todoCancelCreate')?.addEventListener('click', closeTaskModal);
+    document.querySelectorAll('[data-close-todo-modal]').forEach(el => el.addEventListener('click', closeTaskModal));
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('todoCreateModal')?.classList.contains('hidden')) closeTaskModal(); });
     $('todoSearch')?.addEventListener('input', render);
     $('todoDuration')?.addEventListener('change', e => $('todoCustomWrap')?.classList.toggle('hidden', !['custom'].includes(e.target.value)));
     document.querySelectorAll('.todo-filter').forEach(btn => btn.addEventListener('click', () => {

@@ -86,6 +86,20 @@
       <div class="todo-smart-card"><span>Remaining task-days</span><strong id="todoRemainingTaskDays">0</strong></div>
     </section>
 
+    <section class="todo-insights-card" aria-label="Today's productivity insights">
+      <div class="todo-insights-head">
+        <div><span class="card-eyebrow">PRODUCTIVITY INSIGHTS</span><h2>Today’s Focus</h2><p>See what needs attention first, without changing your saved task data.</p></div>
+        <button id="todoFocusHighBtn" class="todo-insight-action" type="button">Show high priority</button>
+      </div>
+      <div class="todo-insights-grid">
+        <div class="todo-insight-stat"><span>Pending today</span><strong id="todoInsightPending">0</strong><small>tasks still to finish</small></div>
+        <div class="todo-insight-stat"><span>High priority left</span><strong id="todoInsightHigh">0</strong><small>needs extra attention</small></div>
+        <div class="todo-insight-stat"><span>Due in 3 days</span><strong id="todoInsightDueSoon">0</strong><small>active goals approaching deadline</small></div>
+        <div class="todo-insight-stat"><span>Goals completed</span><strong id="todoInsightCompleted">0</strong><small>target duration fully completed</small></div>
+      </div>
+      <div class="todo-insight-progress"><div><span>Today’s focus progress</span><b id="todoInsightProgressText">0%</b></div><div class="todo-insight-bar"><i id="todoInsightProgressBar"></i></div></div>
+    </section>
+
     <section class="todo-reports-card">
       <div class="todo-report-head"><div><span class="card-eyebrow">REPORTS</span><h2>Weekly &amp; Monthly</h2></div><div class="todo-report-summary"><span id="todoWeekSummary">7-day report loading...</span><span id="todoMonthSummary">30-day report loading...</span></div></div>
       <div class="todo-report-columns">
@@ -126,6 +140,7 @@
 <script src="todo-security.js"></script>
 <script src="todo-dashboard.js"></script>
 <script src="todo-reports.js"></script>
+<script src="todo-insights.js"></script>
 <script src="todo-list.js"></script>
 </body>
 </html>

@@ -1,6 +1,8 @@
 /* =========================================================
-   TODO LIST — database + daily goal tracking module
-   Every task and every day's progress is stored in MongoDB.
+   TODO LIST — database-backed daily task tracker
+   - Shows only today's working state (no long date strip).
+   - Each task can be marked Done / Not Done for today.
+   - Only today's date can be written; server remains authoritative.
    ========================================================= */
 (() => {
   'use strict';
@@ -9,7 +11,8 @@
   let activeFilter = 'all';
   let editingId = null;
   let tasks = [];
-  let today = localDateKey();
+  let today = '';
+  let todoTimezone = 'Asia/Kolkata';
 
   const $ = id => document.getElementById(id);
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, c => ({
@@ -32,58 +35,46 @@
     return data;
   }
 
-  function localDateKey(date = new Date()) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-
   function parseDateKey(value) {
     const [y, m, d] = String(value).split('-').map(Number);
     return new Date(y, m - 1, d);
   }
 
-  function addDays(value, amount) {
-    const d = parseDateKey(value);
-    d.setDate(d.getDate() + amount);
-    return localDateKey(d);
-  }
-
-  function formatDate(value, options = { day:'numeric', month:'short', year:'numeric' }) {
+  function formatDate(value) {
     if (!value) return '';
     const d = parseDateKey(value);
-    return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, options);
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
   }
 
   function getLog(task, date = today) {
-    return (task.dailyLogs || []).find(log => log.date === date) || { date, progress: 0, completed: false, note: '' };
+    return (task.dailyLogs || []).find(log => log.date === date) || {
+      date, progress: 0, completed: false, note: ''
+    };
   }
 
-  function completedDays(task) {
-    return (task.dailyLogs || []).filter(log => log.completed).length;
+  function isTargetComplete(task) {
+    return (task.dailyLogs || []).filter(log => log.completed).length >= Number(task.durationDays || 1);
   }
 
-  function targetProgress(task) {
-    return task.durationDays ? Math.round((completedDays(task) / task.durationDays) * 100) : 0;
-  }
-
-  function isTargetComplete(task) { return completedDays(task) >= task.durationDays; }
   function isExpired(task) { return today > task.endDate && !isTargetComplete(task); }
   function isBeforeStart(task) { return today < task.startDate; }
+
+  function daysLeft(task) {
+    if (!task.endDate || today > task.endDate) return 0;
+    const end = parseDateKey(task.endDate);
+    const now = parseDateKey(today);
+    return Math.max(0, Math.floor((end - now) / 86400000) + 1);
+  }
 
   function durationLabel(task) {
     const n = Number(task.durationDays || 1);
     if (task.durationType === 'day') return '1 day';
-    if (task.durationType === 'week') return '1 week';
-    if (task.durationType === 'month') return '1 month';
-    if (task.durationType === 'year') return '1 year';
+    if (task.durationType === 'week') return '7 days';
+    if (task.durationType === 'month') return `${n} days`;
+    if (task.durationType === 'year') return `${n} days`;
     return `${n} day${n === 1 ? '' : 's'}`;
-  }
-
-  function daysLeft(task) {
-    if (today > task.endDate) return 0;
-    return Math.max(0, Math.floor((parseDateKey(task.endDate) - parseDateKey(today)) / 86400000) + 1);
   }
 
   function setMessage(message, type = 'info') {
@@ -91,17 +82,77 @@
     if (!el) return;
     el.textContent = message || '';
     el.className = `todo-message ${message ? `is-${type}` : ''}`;
-    if (message) setTimeout(() => { if (el.textContent === message) el.textContent = ''; }, 3500);
+    if (message) setTimeout(() => { if (el.textContent === message) el.textContent = ''; }, 3000);
   }
 
-  function renderHistory(task) {
-    const days = [];
-    for (let i = 0; i < task.durationDays; i++) {
-      const date = addDays(task.startDate, i);
-      const log = getLog(task, date);
-      days.push(`<span class="todo-day ${log.completed ? 'done' : ''} ${date === today ? 'today' : ''}" title="${escapeHtml(formatDate(date))}: ${Number(log.progress || 0)}%">${date.slice(8,10)}</span>`);
-    }
-    return `<div class="todo-day-track">${days.join('')}</div>`;
+  function renderTask(task) {
+    const log = getLog(task);
+    const doneToday = Boolean(log.completed);
+    const targetComplete = isTargetComplete(task);
+    const expired = isExpired(task);
+    const beforeStart = isBeforeStart(task);
+    const locked = beforeStart || expired || targetComplete;
+    const remaining = daysLeft(task);
+    const dailyNote = log.note || '';
+    const statusText = targetComplete ? 'Target completed' : expired ? 'Target ended' : `${remaining} day${remaining === 1 ? '' : 's'} left`;
+
+    const item = document.createElement('article');
+    item.className = `todo-item todo-goal${targetComplete ? ' is-complete' : ''}${expired ? ' is-expired' : ''}${doneToday ? ' done-today' : ''}`;
+    item.dataset.id = task.id;
+    item.innerHTML = `
+      <div class="todo-goal-top">
+        <div class="todo-task-main">
+          <label class="todo-done-toggle" title="Mark this task done for today">
+            <input class="todo-done-check" type="checkbox" ${doneToday ? 'checked' : ''} ${locked ? 'disabled' : ''}>
+            <span class="todo-check-box">${doneToday ? '✓' : ''}</span>
+          </label>
+          <div class="todo-content">
+            <div class="todo-title-row">
+              <h3>${escapeHtml(task.title)}</h3>
+              <span class="todo-priority ${escapeHtml(task.priority)}">${escapeHtml(task.priority)}</span>
+            </div>
+            ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ''}
+            <div class="todo-meta">
+              <span class="todo-category">${escapeHtml(task.category || 'Other')}</span>
+              <span>🎯 ${escapeHtml(durationLabel(task))}</span>
+              <span class="todo-days-left">${escapeHtml(statusText)}</span>
+            </div>
+          </div>
+        </div>
+        <div class="todo-actions">
+          <button type="button" class="todo-save-day" ${locked ? 'disabled' : ''}>${doneToday ? '✓ Done — Save' : 'Save Not Done'}</button>
+          <button type="button" class="todo-edit">Edit</button>
+          <button type="button" class="todo-delete">Delete</button>
+        </div>
+      </div>
+      <div class="todo-today-row">
+        <div class="todo-today-status ${doneToday ? 'is-done' : ''}">
+          <strong>${doneToday ? 'DONE TODAY' : 'NOT DONE TODAY'}</strong>
+          <span>${doneToday ? 'This task is marked complete for today.' : 'Mark Done when you finish this task today.'}</span>
+        </div>
+        <input class="todo-day-note" type="text" maxlength="500" value="${escapeHtml(dailyNote)}" placeholder="Today's note (optional)" ${locked ? 'disabled' : ''}>
+      </div>`;
+
+    const check = item.querySelector('.todo-done-check');
+    const box = item.querySelector('.todo-check-box');
+    const saveBtn = item.querySelector('.todo-save-day');
+    const status = item.querySelector('.todo-today-status');
+    const note = item.querySelector('.todo-day-note');
+
+    const syncVisual = () => {
+      const done = check.checked;
+      box.textContent = done ? '✓' : '';
+      status.classList.toggle('is-done', done);
+      status.querySelector('strong').textContent = done ? 'DONE TODAY' : 'NOT DONE TODAY';
+      status.querySelector('span').textContent = done ? 'This task is marked complete for today.' : 'Mark Done when you finish this task today.';
+      saveBtn.textContent = done ? '✓ Done — Save' : 'Save Not Done';
+    };
+
+    check.addEventListener('change', syncVisual);
+    saveBtn.addEventListener('click', () => saveToday(task.id, check.checked, note.value));
+    item.querySelector('.todo-edit').addEventListener('click', () => edit(task.id));
+    item.querySelector('.todo-delete').addEventListener('click', () => remove(task.id));
+    return item;
   }
 
   function render() {
@@ -110,9 +161,11 @@
 
     const search = ($('todoSearch')?.value || '').trim().toLowerCase();
     let visible = tasks.filter(task => {
-      const done = isTargetComplete(task);
-      if (activeFilter === 'pending' && done) return false;
-      if (activeFilter === 'completed' && !done) return false;
+      const complete = isTargetComplete(task);
+      const doneToday = getLog(task).completed;
+      if (activeFilter === 'pending' && complete) return false;
+      if (activeFilter === 'completed' && !complete) return false;
+      if (activeFilter === 'today-done' && !doneToday) return false;
       if (activeFilter === 'high' && task.priority !== 'high') return false;
       if (activeFilter === 'expired' && !isExpired(task)) return false;
       if (search && !`${task.title} ${task.notes || ''} ${task.category || ''}`.toLowerCase().includes(search)) return false;
@@ -120,104 +173,45 @@
     });
 
     visible.sort((a, b) => {
-      const ad = isTargetComplete(a), bd = isTargetComplete(b);
+      const ad = getLog(a).completed, bd = getLog(b).completed;
       if (ad !== bd) return ad ? 1 : -1;
-      if (a.endDate !== b.endDate) return a.endDate.localeCompare(b.endDate);
+      if (a.endDate !== b.endDate) return String(a.endDate).localeCompare(String(b.endDate));
       return String(b.createdAt).localeCompare(String(a.createdAt));
     });
 
     list.innerHTML = '';
+    visible.forEach(task => list.appendChild(renderTask(task)));
     empty.classList.toggle('hidden', visible.length !== 0);
-
-    visible.forEach(task => {
-      const log = getLog(task);
-      const progress = Math.max(0, Math.min(100, Number(log.progress || 0)));
-      const overall = targetProgress(task);
-      const complete = isTargetComplete(task);
-      const expired = isExpired(task);
-      const beforeStart = isBeforeStart(task);
-      const item = document.createElement('article');
-      item.className = `todo-item todo-goal${complete ? ' is-complete' : ''}${expired ? ' is-expired' : ''}`;
-      item.dataset.id = task.id;
-
-      item.innerHTML = `
-        <div class="todo-goal-top">
-          <div class="todo-check-wrap">
-            <div class="todo-goal-icon">${complete ? '✓' : '○'}</div>
-            <div class="todo-content">
-              <div class="todo-title-row"><h3>${escapeHtml(task.title)}</h3><span class="todo-priority ${escapeHtml(task.priority)}">${escapeHtml(task.priority)}</span></div>
-              ${task.notes ? `<p>${escapeHtml(task.notes)}</p>` : ''}
-              <div class="todo-meta"><span class="todo-category">${escapeHtml(task.category || 'Other')}</span><span>🎯 ${escapeHtml(durationLabel(task))}</span><span>${escapeHtml(formatDate(task.startDate, {day:'numeric',month:'short'}))} → ${escapeHtml(formatDate(task.endDate, {day:'numeric',month:'short',year:'numeric'}))}</span></div>
-            </div>
-          </div>
-          <div class="todo-actions"><button type="button" class="todo-edit">Edit</button><button type="button" class="todo-delete">Delete</button></div>
-        </div>
-
-        <div class="todo-goal-progress">
-          <div class="todo-progress-head"><strong>${completedDays(task)} / ${task.durationDays} days completed</strong><span>${overall}% target progress</span></div>
-          <div class="todo-progress"><i style="width:${overall}%"></i></div>
-          <div class="todo-day-caption"><span>Daily tracking</span><span>${beforeStart ? `Starts ${formatDate(task.startDate, {day:'numeric',month:'short'})}` : expired ? 'Target ended' : complete ? 'Target completed' : `${daysLeft(task)} day${daysLeft(task) === 1 ? '' : 's'} left`}</span></div>
-          ${renderHistory(task)}
-        </div>
-
-        <div class="todo-today-card">
-          <div class="todo-today-title"><span>Today · ${escapeHtml(formatDate(today))}</span><strong>${progress}%</strong></div>
-          <div class="todo-today-controls">
-            <input class="todo-day-range" type="range" min="0" max="100" step="5" value="${progress}" aria-label="Today's progress" ${beforeStart || expired || complete ? 'disabled' : ''}>
-            <input class="todo-day-number" type="number" min="0" max="100" step="5" value="${progress}" aria-label="Today's progress percentage" ${beforeStart || expired || complete ? 'disabled' : ''}>
-            <input class="todo-day-note" type="text" maxlength="500" value="${escapeHtml(log.note || '')}" placeholder="What did you complete today?" ${beforeStart || expired || complete ? 'disabled' : ''}>
-            <button type="button" class="todo-save-day" ${beforeStart || expired || complete ? 'disabled' : ''}>${beforeStart ? 'Not started' : complete ? 'Goal complete' : expired ? 'Target ended' : 'Save today'}</button>
-          </div>
-          <small class="todo-day-help">Set today's progress. At 100%, this day is saved as completed. Your daily result stays in the database.</small>
-        </div>`;
-
-      const range = item.querySelector('.todo-day-range');
-      const number = item.querySelector('.todo-day-number');
-      const todayStrong = item.querySelector('.todo-today-title strong');
-      const sync = value => {
-        const n = Math.max(0, Math.min(100, Number(value) || 0));
-        range.value = n; number.value = n; todayStrong.textContent = `${n}%`;
-      };
-      let autoSaveTimer;
-      const queueAutoSave = () => {
-        if (beforeStart || expired || complete) return;
-        clearTimeout(autoSaveTimer);
-        autoSaveTimer = setTimeout(() => saveDaily(task.id, Number(number.value || 0), item.querySelector('.todo-day-note').value, { silent: true }), 800);
-      };
-      range.addEventListener('input', e => { sync(e.target.value); queueAutoSave(); });
-      number.addEventListener('input', e => { sync(e.target.value); queueAutoSave(); });
-      item.querySelector('.todo-day-note').addEventListener('blur', queueAutoSave);
-      item.querySelector('.todo-save-day').addEventListener('click', () => saveDaily(task.id, Number(number.value || 0), item.querySelector('.todo-day-note').value));
-      item.querySelector('.todo-edit').addEventListener('click', () => edit(task.id));
-      item.querySelector('.todo-delete').addEventListener('click', () => remove(task.id));
-      list.appendChild(item);
-    });
-
-    updateStats();
+    updateDashboard();
   }
 
-  function updateStats() {
+  function updateDashboard() {
     const total = tasks.length;
-    const completed = tasks.filter(isTargetComplete).length;
-    const pending = total - completed;
-    const average = total ? Math.round(tasks.reduce((sum, task) => sum + targetProgress(task), 0) / total) : 0;
+    const doneToday = tasks.filter(task => getLog(task).completed).length;
+    const active = tasks.filter(task => !isTargetComplete(task) && !isExpired(task)).length;
+    const todayPercent = total ? Math.round((doneToday / total) * 100) : 0;
+    const dayValues = tasks.filter(task => !isTargetComplete(task) && !isExpired(task)).map(daysLeft);
+    const minDaysLeft = dayValues.length ? Math.min(...dayValues) : 0;
+
     if ($('todoTotal')) $('todoTotal').textContent = total;
-    if ($('todoPending')) $('todoPending').textContent = pending;
-    if ($('todoCompleted')) $('todoCompleted').textContent = completed;
-    if ($('todoProgress')) $('todoProgress').textContent = `${average}%`;
-    if ($('todoProgressBar')) $('todoProgressBar').style.width = `${average}%`;
+    if ($('todoPending')) $('todoPending').textContent = active;
+    if ($('todoCompleted')) $('todoCompleted').textContent = `${doneToday}/${total}`;
+    if ($('todoProgress')) $('todoProgress').textContent = `${todayPercent}%`;
+    if ($('todoProgressBar')) $('todoProgressBar').style.width = `${todayPercent}%`;
+    if ($('todoTodayDate')) $('todoTodayDate').textContent = formatDate(today);
+    if ($('todoDaysLeft')) $('todoDaysLeft').textContent = minDaysLeft ? `${minDaysLeft} day${minDaysLeft === 1 ? '' : 's'}` : '—';
+    if ($('todoDoneToday')) $('todoDoneToday').textContent = `${doneToday}/${total}`;
   }
 
   function resetForm() {
     $('todoForm')?.reset();
     if ($('todoPriority')) $('todoPriority').value = 'medium';
     if ($('todoCategory')) $('todoCategory').value = 'Study';
-    if ($('todoDuration')) $('todoDuration').value = 'day';
-    if ($('todoStartDate')) $('todoStartDate').value = today;
+    if ($('todoDuration')) { $('todoDuration').value = 'day'; $('todoDuration').disabled = false; }
     if ($('todoCustomDays')) $('todoCustomDays').value = 7;
     $('todoCustomWrap')?.classList.add('hidden');
     editingId = null;
-    if ($('todoAddBtn')) $('todoAddBtn').textContent = '＋ Add Goal';
+    if ($('todoAddBtn')) $('todoAddBtn').textContent = '＋ Add Task';
   }
 
   function formPayload() {
@@ -226,9 +220,8 @@
       notes: ($('todoNotes')?.value || '').trim(),
       priority: $('todoPriority')?.value || 'medium',
       category: $('todoCategory')?.value || 'Other',
-      durationType: $('todoDuration')?.value || 'day',
-      customDays: Number($('todoCustomDays')?.value || 1),
-      startDate: $('todoStartDate')?.value || today
+      durationType: $('todoDuration')?.value === 'custom90' ? 'custom' : ($('todoDuration')?.value || 'day'),
+      customDays: $('todoDuration')?.value === 'custom90' ? 90 : Number($('todoCustomDays')?.value || 1)
     };
   }
 
@@ -246,7 +239,7 @@
       } else {
         const result = await api('/todos', { method: 'POST', body: JSON.stringify(payload) });
         tasks.unshift(result.task);
-        setMessage('Goal created and saved to database.', 'success');
+        setMessage('Task created and saved to database.', 'success');
       }
       resetForm();
       render();
@@ -254,14 +247,15 @@
     finally { if (btn) btn.disabled = false; }
   }
 
-  async function saveDaily(id, progress, note, options = {}) {
+  async function saveToday(id, done, note) {
     try {
       const result = await api(`/todos/${encodeURIComponent(id)}/daily`, {
-        method: 'PATCH', body: JSON.stringify({ date: today, progress, note })
+        method: 'PATCH',
+        body: JSON.stringify({ date: today, progress: done ? 100 : 0, note })
       });
       tasks = tasks.map(task => task.id === id ? result.task : task);
-      if (!options.silent) render();
-      setMessage(options.silent ? 'Auto-saved today\'s progress.' : (progress >= 100 ? 'Today completed and saved.' : 'Today\'s progress saved.'), 'success');
+      render();
+      setMessage(done ? 'Today marked DONE and saved.' : 'Today marked NOT DONE and saved.', 'success');
     } catch (error) { setMessage(error.message, 'error'); }
   }
 
@@ -274,7 +268,7 @@
     $('todoPriority').value = task.priority || 'medium';
     $('todoCategory').value = task.category || 'Other';
     $('todoDuration').value = task.durationType || 'custom';
-    $('todoStartDate').value = task.startDate || today;
+    $('todoDuration').disabled = true;
     $('todoCustomDays').value = task.durationDays || 7;
     $('todoCustomWrap')?.classList.toggle('hidden', task.durationType !== 'custom');
     $('todoAddBtn').textContent = '✓ Update Task';
@@ -285,7 +279,7 @@
   async function remove(id) {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
-    if (!confirm(`Delete "${task.title}" and its daily history?`)) return;
+    if (!confirm(`Delete "${task.title}" and its saved daily history?`)) return;
     try {
       await api(`/todos/${encodeURIComponent(id)}`, { method: 'DELETE' });
       tasks = tasks.filter(t => t.id !== id);
@@ -298,16 +292,17 @@
   async function loadTasks() {
     try {
       const result = await api('/todos');
+      today = result.today || today;
+      todoTimezone = result.timezone || todoTimezone;
       tasks = Array.isArray(result.tasks) ? result.tasks : [];
       render();
     } catch (error) { setMessage(error.message, 'error'); }
   }
 
   function bind() {
-    if ($('todoStartDate')) $('todoStartDate').value = today;
     $('todoForm')?.addEventListener('submit', addOrUpdate);
     $('todoSearch')?.addEventListener('input', render);
-    $('todoDuration')?.addEventListener('change', e => $('todoCustomWrap')?.classList.toggle('hidden', e.target.value !== 'custom'));
+    $('todoDuration')?.addEventListener('change', e => $('todoCustomWrap')?.classList.toggle('hidden', !['custom'].includes(e.target.value)));
     document.querySelectorAll('.todo-filter').forEach(btn => btn.addEventListener('click', () => {
       document.querySelectorAll('.todo-filter').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
@@ -318,19 +313,9 @@
     window.TodoList = { refresh: loadTasks };
     loadTasks();
 
-    // Re-check the local calendar regularly. At midnight the UI moves to the new day
-    // automatically; previously saved daily logs remain in MongoDB.
-    setInterval(() => {
-      const next = localDateKey();
-      if (next !== today) { today = next; resetForm(); loadTasks(); }
-    }, 30000);
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) {
-        const next = localDateKey();
-        if (next !== today) today = next;
-        loadTasks();
-      }
-    });
+    // Refresh only the current-day state. The server decides what "today" is.
+    setInterval(loadTasks, 60000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) loadTasks(); });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);

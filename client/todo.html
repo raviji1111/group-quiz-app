@@ -38,11 +38,16 @@
       <button id="todoRefresh" class="secondary-btn" type="button">↻ Refresh</button>
     </div>
 
+    <div class="todo-today-banner">
+      <div><span class="card-eyebrow">TODAY</span><strong id="todoTodayDate">Loading today...</strong></div>
+      <div class="todo-today-banner-stats"><span><b id="todoDoneToday">0/0</b> done today</span><span><b id="todoDaysLeft">—</b> days left</span></div>
+    </div>
+
     <div class="todo-stats">
-      <div class="todo-stat"><span>Total</span><strong id="todoTotal">0</strong></div>
-      <div class="todo-stat"><span>Pending</span><strong id="todoPending">0</strong></div>
-      <div class="todo-stat"><span>Completed</span><strong id="todoCompleted">0</strong></div>
-      <div class="todo-stat todo-stat-progress"><span>Progress</span><strong id="todoProgress">0%</strong><div class="todo-progress"><i id="todoProgressBar"></i></div></div>
+      <div class="todo-stat"><span>Total Tasks</span><strong id="todoTotal">0</strong></div>
+      <div class="todo-stat"><span>Active Tasks</span><strong id="todoPending">0</strong></div>
+      <div class="todo-stat"><span>Done Today</span><strong id="todoCompleted">0/0</strong></div>
+      <div class="todo-stat todo-stat-progress"><span>Today's Completion</span><strong id="todoProgress">0%</strong><div class="todo-progress"><i id="todoProgressBar"></i></div></div>
     </div>
 
     <div id="todoMessage" class="todo-message" aria-live="polite"></div>
@@ -54,13 +59,12 @@
       </div>
       <div class="todo-form-fields todo-goal-fields">
         <label>Priority<select id="todoPriority"><option value="medium">Medium</option><option value="high">High</option><option value="low">Low</option></select></label>
-        <label>Duration<select id="todoDuration"><option value="day">1 Day</option><option value="week">1 Week</option><option value="month">1 Month</option><option value="year">1 Year</option><option value="custom">Custom Days</option></select></label>
-        <label>Start date<input id="todoStartDate" type="date" required></label>
+        <label>Duration<select id="todoDuration"><option value="day">1 Day</option><option value="week">1 Week</option><option value="month">1 Month</option><option value="year">1 Year</option><option value="custom90">90 Days</option><option value="custom">Custom Days</option></select></label>
         <label id="todoCustomWrap" class="hidden">Days<input id="todoCustomDays" type="number" min="1" max="3650" value="7"></label>
         <label>Category<select id="todoCategory"><option>Study</option><option>Practice</option><option>Revision</option><option>Personal</option><option>Other</option></select></label>
-        <button id="todoAddBtn" type="submit">＋ Add Goal</button>
+        <button id="todoAddBtn" type="submit">＋ Add Task</button>
       </div>
-      <p class="todo-form-help">Choose how long the goal should run. Every calendar day gets its own saved progress, and the goal result is calculated across the full target period.</p>
+      <p class="todo-form-help">Choose how long this task should run. Every task starts today. Mark each task Done or Not Done for today and save it. Previous and future days stay locked.</p>
     </form>
 
     <div class="todo-toolbar">
@@ -68,7 +72,7 @@
       <div class="todo-filters">
         <button type="button" class="todo-filter active" data-filter="all">All</button>
         <button type="button" class="todo-filter" data-filter="pending">Active</button>
-        <button type="button" class="todo-filter" data-filter="completed">Completed</button>
+        <button type="button" class="todo-filter" data-filter="today-done">Done Today</button>
         <button type="button" class="todo-filter" data-filter="expired">Ended</button>
         <button type="button" class="todo-filter" data-filter="high">High priority</button>
       </div>

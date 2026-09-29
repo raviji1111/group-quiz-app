@@ -7,6 +7,16 @@ const router = express.Router();
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DURATION_TYPES = new Set(['day', 'week', 'month', 'year', 'custom']);
 const PRIORITIES = new Set(['low', 'medium', 'high']);
+const TODO_TIMEZONE = process.env.TODO_TIMEZONE || 'Asia/Kolkata';
+
+function todayInTodoTimezone() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TODO_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date());
+}
 
 function cleanDate(value) {
   const date = String(value || '').trim();
@@ -86,7 +96,7 @@ function taskForPlayer(id, playerId) {
 router.get('/', requirePlayer, async (req, res) => {
   try {
     const tasks = await TodoTask.find({ player: req.player.id, archived: false }).sort({ createdAt: -1 }).lean();
-    res.json({ tasks: tasks.map(normalizeTask) });
+    res.json({ today: todayInTodoTimezone(), timezone: TODO_TIMEZONE, tasks: tasks.map(normalizeTask) });
   } catch (error) {
     console.error('Todo list error:', error);
     res.status(500).json({ message: 'Could not load Todo tasks.' });
@@ -104,7 +114,12 @@ router.post('/', requirePlayer, async (req, res) => {
     const durationType = String(req.body.durationType || 'day');
     if (!DURATION_TYPES.has(durationType)) return res.status(400).json({ message: 'Invalid duration.' });
 
-    const startDate = cleanDate(req.body.startDate) || formatDate(new Date());
+    const serverToday = todayInTodoTimezone();
+    const requestedStartDate = cleanDate(req.body.startDate);
+    if (requestedStartDate && requestedStartDate !== serverToday) {
+      return res.status(400).json({ message: 'A new goal must start today. Past or future start dates are not allowed.' });
+    }
+    const startDate = serverToday;
     const customDays = Number(req.body.customDays || 1);
     if (durationType === 'custom' && (!Number.isInteger(customDays) || customDays < 1 || customDays > 3650)) {
       return res.status(400).json({ message: 'Custom duration must be between 1 and 3650 days.' });
@@ -162,13 +177,22 @@ router.patch('/:id/daily', requirePlayer, async (req, res) => {
 
     const date = cleanDate(req.body.date);
     if (!date) return res.status(400).json({ message: 'A valid day is required.' });
-    if (date < task.startDate || date > task.endDate) return res.status(400).json({ message: 'That day is outside this task target period.' });
+    const serverToday = todayInTodoTimezone();
+    if (date !== serverToday) {
+      return res.status(400).json({ message: "Only today's progress can be saved. Previous and future days are locked." });
+    }
+    if (date < task.startDate || date > task.endDate) return res.status(400).json({ message: 'Today is outside this task target period.' });
 
-    const progress = Math.max(0, Math.min(100, Number(req.body.progress || 0)));
-    if (!Number.isFinite(progress)) return res.status(400).json({ message: 'Invalid daily progress.' });
+    const rawProgress = Number(req.body.progress);
+    if (!Number.isFinite(rawProgress) || !Number.isInteger(rawProgress) || rawProgress < 0 || rawProgress > 100) {
+      return res.status(400).json({ message: 'Daily progress must be a whole number from 0 to 100.' });
+    }
+    const progress = rawProgress;
     const note = String(req.body.note || '').trim().slice(0, 500);
-    const completed = progress >= 100;
     const existing = task.dailyLogs.find(log => log.date === date);
+    const targetAlreadyComplete = task.dailyLogs.filter(log => log.completed).length >= task.durationDays;
+    if (targetAlreadyComplete) return res.status(400).json({ message: 'This goal is already completed and is locked.' });
+    const completed = progress >= 100;
     if (existing) {
       existing.progress = progress;
       existing.note = note;
@@ -202,6 +226,7 @@ router.delete('/:id/daily/:date', requirePlayer, async (req, res) => {
     const date = cleanDate(req.params.date);
     const task = await taskForPlayer(req.params.id, req.player.id);
     if (!task) return res.status(404).json({ message: 'Todo task not found.' });
+    if (date !== todayInTodoTimezone()) return res.status(400).json({ message: "Only today's progress can be cleared." });
     task.dailyLogs = task.dailyLogs.filter(log => log.date !== date);
     await task.save();
     res.json({ task: normalizeTask(task) });

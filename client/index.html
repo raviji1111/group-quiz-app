@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Group Quiz — Quiz Hub</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="reference-ui-v2.css">
+<title>Group Quiz — Quiz Hub</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="reference-ui-v2.css"><link rel="stylesheet" href="todo-list.css">
 </head>
 <body class="player-site">
 <header class="player-nav">
@@ -49,50 +49,7 @@
 
     <section class="subject-section"><div class="player-section-head"><div><span class="card-eyebrow">EXPLORE</span><h2>Subjects</h2></div><p>Choose a subject to see its topics</p></div><div id="subjectGrid" class="subject-grid"></div></section>
     <section id="quizCatalog" class="catalog-section"><div class="player-section-head"><div><span class="card-eyebrow">QUIZZES</span><h2 id="catalogTitle">All Quizzes</h2></div><select id="quizSelect" class="player-select"><option value="">Loading quizzes...</option></select></div><div id="topicFilter" class="topic-filter"></div><div id="quizCards" class="quiz-card-grid"></div></section>
-    <section id="todoSection" class="todo-section">
-      <div class="todo-header">
-        <div>
-          <span class="card-eyebrow">PERSONAL PRODUCTIVITY</span>
-          <h2>My Todo List</h2>
-          <p>Plan your study tasks, track progress and stay on schedule.</p>
-        </div>
-        <button id="todoClearCompleted" class="secondary-btn" type="button">Clear completed</button>
-      </div>
 
-      <div class="todo-stats">
-        <div class="todo-stat"><span>Total</span><strong id="todoTotal">0</strong></div>
-        <div class="todo-stat"><span>Pending</span><strong id="todoPending">0</strong></div>
-        <div class="todo-stat"><span>Completed</span><strong id="todoCompleted">0</strong></div>
-        <div class="todo-stat todo-stat-progress"><span>Progress</span><strong id="todoProgress">0%</strong><div class="todo-progress"><i id="todoProgressBar"></i></div></div>
-      </div>
-
-      <form id="todoForm" class="todo-add-card">
-        <div class="todo-form-main">
-          <input id="todoTitle" type="text" maxlength="120" placeholder="What do you want to accomplish?" autocomplete="off" required>
-          <textarea id="todoNotes" maxlength="500" placeholder="Notes (optional)"></textarea>
-        </div>
-        <div class="todo-form-fields">
-          <label>Priority<select id="todoPriority"><option value="medium">Medium</option><option value="high">High</option><option value="low">Low</option></select></label>
-          <label>Due date<input id="todoDueDate" type="date"></label>
-          <label>Category<select id="todoCategory"><option>Study</option><option>Practice</option><option>Revision</option><option>Personal</option><option>Other</option></select></label>
-          <button id="todoAddBtn" type="submit">＋ Add Task</button>
-        </div>
-      </form>
-
-      <div class="todo-toolbar">
-        <div class="todo-search"><span>⌕</span><input id="todoSearch" type="search" placeholder="Search tasks..."></div>
-        <div class="todo-filters">
-          <button type="button" class="todo-filter active" data-filter="all">All</button>
-          <button type="button" class="todo-filter" data-filter="pending">Pending</button>
-          <button type="button" class="todo-filter" data-filter="completed">Completed</button>
-          <button type="button" class="todo-filter" data-filter="high">High priority</button>
-        </div>
-      </div>
-      <div id="todoList" class="todo-list"></div>
-      <div id="todoEmpty" class="todo-empty hidden"><div class="todo-empty-icon">✓</div><h3>No tasks here</h3><p>Add a task above and keep your study plan organized.</p></div>
-    </section>
-
-    
     <div class="account-bar"><span id="accountStatusMirror">Signed in.</span><button id="startBtn" style="display:none" aria-hidden="true" tabindex="-1">Start Selected Quiz</button></div>
     <input id="playerName" type="text" maxlength="30" readonly class="hidden-input">
     <p id="playerMessage" class="admin-message"></p>
@@ -109,6 +66,6 @@
 <script src="live-autosave.js"></script><script src="live-leaderboard.js"></script><script src="live-result-controls.js"></script><script src="live-export.js"></script><script src="live-announcements.js"></script><script src="live-pause-resume.js"></script>
 <script src="live-connection.js"></script>
 <script src="live-monitoring.js"></script>
-<script src="script.js"></script><script src="todo-list.js"></script>
+<script src="script.js"></script>
 <script src="live-hero.js"></script><script src="live-discovery-fix.js"></script><script src="reference-ui-v2.js"></script>
 </body></html>

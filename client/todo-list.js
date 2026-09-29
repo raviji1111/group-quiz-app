@@ -200,12 +200,6 @@
   }
 
   function bind() {
-    document.querySelectorAll('.player-nav-btn[data-view="todo"]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        setTimeout(render, 0);
-        $('todoSection')?.scrollIntoView({ behavior:'smooth', block:'start' });
-      });
-    });
     $('todoForm')?.addEventListener('submit', addOrUpdate);
     $('todoSearch')?.addEventListener('input', render);
     $('todoClearCompleted')?.addEventListener('click', clearCompleted);

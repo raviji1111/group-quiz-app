@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Group Quiz — My Todo List</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="reference-ui-v2.css">
+<link rel="stylesheet" href="todo-list.css">
+</head>
+<body class="player-site todo-page">
+<header class="player-nav">
+  <div class="player-brand">
+    <div class="brand-mark">GQ</div>
+    <div><strong>Group Quiz</strong><small>Test. Learn. Improve.</small></div>
+  </div>
+  <nav>
+    <a class="player-nav-btn" href="index.html">Home</a>
+    <a class="player-nav-btn" href="index.html#subjects">Subjects</a>
+    <a class="player-nav-btn" href="index.html#live">🔴 Live Quiz</a>
+    <a class="player-nav-btn active" href="todo.html">✓ Todo</a>
+  </nav>
+  <div class="player-account">
+    <span id="todoAccountStatus">Checking account...</span>
+    <button id="todoThemeToggle" class="theme-toggle" type="button" aria-label="Switch theme">🌙</button>
+    <button id="todoAccountBtn" class="small-btn secondary-btn" type="button">Account</button>
+  </div>
+</header>
+
+<main class="player-main todo-page-main">
+  <section id="todoSection" class="todo-section todo-page-section">
+    <div class="todo-header">
+      <div>
+        <span class="card-eyebrow">PERSONAL PRODUCTIVITY</span>
+        <h1>My Todo List</h1>
+        <p>Plan your study tasks, track progress and stay on schedule.</p>
+      </div>
+      <button id="todoClearCompleted" class="secondary-btn" type="button">Clear completed</button>
+    </div>
+
+    <div class="todo-stats">
+      <div class="todo-stat"><span>Total</span><strong id="todoTotal">0</strong></div>
+      <div class="todo-stat"><span>Pending</span><strong id="todoPending">0</strong></div>
+      <div class="todo-stat"><span>Completed</span><strong id="todoCompleted">0</strong></div>
+      <div class="todo-stat todo-stat-progress"><span>Progress</span><strong id="todoProgress">0%</strong><div class="todo-progress"><i id="todoProgressBar"></i></div></div>
+    </div>
+
+    <form id="todoForm" class="todo-add-card">
+      <div class="todo-form-main">
+        <input id="todoTitle" type="text" maxlength="120" placeholder="What do you want to accomplish?" autocomplete="off" required>
+        <textarea id="todoNotes" maxlength="500" placeholder="Notes (optional)"></textarea>
+      </div>
+      <div class="todo-form-fields">
+        <label>Priority<select id="todoPriority"><option value="medium">Medium</option><option value="high">High</option><option value="low">Low</option></select></label>
+        <label>Due date<input id="todoDueDate" type="date"></label>
+        <label>Category<select id="todoCategory"><option>Study</option><option>Practice</option><option>Revision</option><option>Personal</option><option>Other</option></select></label>
+        <button id="todoAddBtn" type="submit">＋ Add Task</button>
+      </div>
+    </form>
+
+    <div class="todo-toolbar">
+      <div class="todo-search"><span>⌕</span><input id="todoSearch" type="search" placeholder="Search tasks..."></div>
+      <div class="todo-filters">
+        <button type="button" class="todo-filter active" data-filter="all">All</button>
+        <button type="button" class="todo-filter" data-filter="pending">Pending</button>
+        <button type="button" class="todo-filter" data-filter="completed">Completed</button>
+        <button type="button" class="todo-filter" data-filter="high">High priority</button>
+      </div>
+    </div>
+
+    <div id="todoList" class="todo-list"></div>
+    <div id="todoEmpty" class="todo-empty hidden"><div class="todo-empty-icon">✓</div><h3>No tasks here</h3><p>Add a task above and keep your study plan organized.</p></div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const player = (() => { try { return JSON.parse(localStorage.getItem('groupQuizPlayer') || 'null'); } catch (_) { return null; } })();
+  const token = localStorage.getItem('groupQuizPlayerToken');
+  if (!player || !token) { window.location.replace('index.html'); return; }
+
+  const status = document.getElementById('todoAccountStatus');
+  if (status) status.textContent = `Logged in: ${player.name || 'User'}`;
+
+  const body = document.body;
+  const themeBtn = document.getElementById('todoThemeToggle');
+  const savedTheme = localStorage.getItem('groupQuizTheme');
+  if (savedTheme === 'dark') body.classList.add('player-dark');
+  const syncTheme = () => {
+    const dark = body.classList.toggle('player-dark');
+    localStorage.setItem('groupQuizTheme', dark ? 'dark' : 'light');
+    if (themeBtn) themeBtn.textContent = dark ? '☀️' : '🌙';
+  };
+  if (themeBtn) { themeBtn.textContent = body.classList.contains('player-dark') ? '☀️' : '🌙'; themeBtn.addEventListener('click', syncTheme); }
+
+  document.getElementById('todoAccountBtn')?.addEventListener('click', () => { window.location.href = 'index.html'; });
+})();
+</script>
+<script src="todo-list.js"></script>
+</body>
+</html>

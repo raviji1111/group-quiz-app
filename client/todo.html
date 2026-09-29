@@ -78,6 +78,23 @@
       </div>
     </div>
 
+    <section class="todo-smart-dashboard" aria-label="Todo dashboard">
+      <div class="todo-smart-card"><span>Current streak</span><strong id="todoCurrentStreak">0 days</strong></div>
+      <div class="todo-smart-card"><span>Longest streak</span><strong id="todoLongestStreak">0 days</strong></div>
+      <div class="todo-smart-card"><span>7-day consistency</span><strong id="todoWeekRate">0%</strong></div>
+      <div class="todo-smart-card"><span>30-day consistency</span><strong id="todoMonthRate">0%</strong></div>
+      <div class="todo-smart-card"><span>Remaining task-days</span><strong id="todoRemainingTaskDays">0</strong></div>
+    </section>
+
+    <section class="todo-reports-card">
+      <div class="todo-report-head"><div><span class="card-eyebrow">REPORTS</span><h2>Weekly &amp; Monthly</h2></div><div class="todo-report-summary"><span id="todoWeekSummary">7-day report loading...</span><span id="todoMonthSummary">30-day report loading...</span></div></div>
+      <div class="todo-report-columns">
+        <div><h3>Last 7 days</h3><div id="todoWeekRows" class="todo-report-list"></div></div>
+        <div><h3>Last 30 days</h3><div id="todoMonthRows" class="todo-report-list todo-report-list-long"></div></div>
+      </div>
+      <div class="todo-report-foot"><span>Current streak: <b id="todoReportCurrentStreak">0 days</b></span><span>Longest streak: <b id="todoReportLongestStreak">0 days</b></span></div>
+    </section>
+
     <div id="todoList" class="todo-list"></div>
     <div id="todoEmpty" class="todo-empty hidden"><div class="todo-empty-icon">✓</div><h3>No goals here</h3><p>Create a goal above. Each day will have its own progress record.</p></div>
   </section>
@@ -106,6 +123,9 @@
   document.getElementById('todoAccountBtn')?.addEventListener('click', () => { window.location.href = 'index.html'; });
 })();
 </script>
+<script src="todo-security.js"></script>
+<script src="todo-dashboard.js"></script>
+<script src="todo-reports.js"></script>
 <script src="todo-list.js"></script>
 </body>
 </html>

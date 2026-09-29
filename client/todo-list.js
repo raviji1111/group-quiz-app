@@ -243,11 +243,17 @@
       }
       resetForm();
       render();
+      window.TodoDashboard?.refresh?.();
+      window.TodoReports?.refresh?.();
     } catch (error) { setMessage(error.message, 'error'); }
     finally { if (btn) btn.disabled = false; }
   }
 
   async function saveToday(id, done, note) {
+    if (window.TodoSecurity && !window.TodoSecurity.begin(id)) {
+      setMessage('Save already in progress. Please wait.', 'info');
+      return;
+    }
     try {
       const result = await api(`/todos/${encodeURIComponent(id)}/daily`, {
         method: 'PATCH',
@@ -255,8 +261,11 @@
       });
       tasks = tasks.map(task => task.id === id ? result.task : task);
       render();
+      window.TodoDashboard?.refresh?.();
+      window.TodoReports?.refresh?.();
       setMessage(done ? 'Today marked DONE and saved.' : 'Today marked NOT DONE and saved.', 'success');
     } catch (error) { setMessage(error.message, 'error'); }
+    finally { window.TodoSecurity?.end?.(id); }
   }
 
   function edit(id) {

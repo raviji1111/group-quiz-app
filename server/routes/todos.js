@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const TodoTask = require('../models/TodoTask');
 const { requirePlayer } = require('../middleware/playerAuth');
 
@@ -90,6 +91,7 @@ function normalizeTask(task) {
 }
 
 function taskForPlayer(id, playerId) {
+  if (!mongoose.isValidObjectId(id)) return null;
   return TodoTask.findOne({ _id: id, player: playerId });
 }
 
@@ -150,7 +152,9 @@ router.post('/', requirePlayer, async (req, res) => {
 
 router.patch('/:id', requirePlayer, async (req, res) => {
   try {
-    const task = await taskForPlayer(req.params.id, req.player.id);
+    const taskQuery = taskForPlayer(req.params.id, req.player.id);
+    if (!taskQuery) return res.status(404).json({ message: 'Todo task not found.' });
+    const task = await taskQuery;
     if (!task) return res.status(404).json({ message: 'Todo task not found.' });
 
     if (req.body.title !== undefined) {
@@ -172,7 +176,9 @@ router.patch('/:id', requirePlayer, async (req, res) => {
 
 router.patch('/:id/daily', requirePlayer, async (req, res) => {
   try {
-    const task = await taskForPlayer(req.params.id, req.player.id);
+    const taskQuery = taskForPlayer(req.params.id, req.player.id);
+    if (!taskQuery) return res.status(404).json({ message: 'Todo task not found.' });
+    const task = await taskQuery;
     if (!task) return res.status(404).json({ message: 'Todo task not found.' });
 
     const date = cleanDate(req.body.date);
@@ -212,6 +218,7 @@ router.patch('/:id/daily', requirePlayer, async (req, res) => {
 
 router.delete('/:id', requirePlayer, async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Todo task not found.' });
     const result = await TodoTask.deleteOne({ _id: req.params.id, player: req.player.id });
     if (!result.deletedCount) return res.status(404).json({ message: 'Todo task not found.' });
     res.json({ ok: true });
@@ -224,7 +231,9 @@ router.delete('/:id', requirePlayer, async (req, res) => {
 router.delete('/:id/daily/:date', requirePlayer, async (req, res) => {
   try {
     const date = cleanDate(req.params.date);
-    const task = await taskForPlayer(req.params.id, req.player.id);
+    const taskQuery = taskForPlayer(req.params.id, req.player.id);
+    if (!taskQuery) return res.status(404).json({ message: 'Todo task not found.' });
+    const task = await taskQuery;
     if (!task) return res.status(404).json({ message: 'Todo task not found.' });
     if (date !== todayInTodoTimezone()) return res.status(400).json({ message: "Only today's progress can be cleared." });
     task.dailyLogs = task.dailyLogs.filter(log => log.date !== date);

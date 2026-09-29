@@ -235,3 +235,13 @@ body.player-dark .todo-today-status span{color:#91a0b6}
   .todo-today-row{margin-left:0}
   .todo-task-main{width:100%}
 }
+
+/* ===== Smart dashboard / reports: dedicated Todo modules ===== */
+.todo-smart-dashboard{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:16px 0}
+.todo-smart-card{padding:16px;border:1px solid rgba(127,127,127,.18);border-radius:14px;background:var(--card-bg,#fff);box-shadow:0 6px 18px rgba(0,0,0,.04)}
+.todo-smart-card span{display:block;font-size:.78rem;opacity:.7;margin-bottom:6px}.todo-smart-card strong{font-size:1.35rem}
+.todo-reports-card{margin:16px 0 22px;padding:18px;border:1px solid rgba(127,127,127,.18);border-radius:16px;background:var(--card-bg,#fff)}
+.todo-report-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.todo-report-head h2{margin:3px 0 0}.todo-report-summary{display:flex;gap:8px;flex-wrap:wrap}.todo-report-summary span,.todo-report-foot span{padding:8px 10px;border-radius:10px;background:rgba(127,127,127,.09);font-size:.82rem}
+.todo-report-columns{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px}.todo-report-columns h3{margin:0 0 8px}.todo-report-list{max-height:230px;overflow:auto;border:1px solid rgba(127,127,127,.14);border-radius:10px}.todo-report-list-long{max-height:230px}.todo-report-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;padding:8px 10px;border-bottom:1px solid rgba(127,127,127,.1);font-size:.82rem}.todo-report-row:last-child{border-bottom:0}.todo-report-row b{min-width:42px;text-align:right}.todo-report-foot{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+@media (max-width:900px){.todo-smart-dashboard{grid-template-columns:repeat(2,minmax(0,1fr))}.todo-report-columns{grid-template-columns:1fr}.todo-report-head{flex-direction:column}}
+@media (max-width:520px){.todo-smart-dashboard{grid-template-columns:1fr 1fr;gap:8px}.todo-smart-card{padding:12px}.todo-smart-card strong{font-size:1.1rem}.todo-report-row{grid-template-columns:1fr auto auto;font-size:.75rem}}

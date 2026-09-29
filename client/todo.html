@@ -35,7 +35,7 @@
         <h1>My Todo List</h1>
         <p>Plan your study tasks, track progress and stay on schedule.</p>
       </div>
-      <button id="todoClearCompleted" class="secondary-btn" type="button">Clear completed</button>
+      <button id="todoRefresh" class="secondary-btn" type="button">↻ Refresh</button>
     </div>
 
     <div class="todo-stats">
@@ -45,31 +45,37 @@
       <div class="todo-stat todo-stat-progress"><span>Progress</span><strong id="todoProgress">0%</strong><div class="todo-progress"><i id="todoProgressBar"></i></div></div>
     </div>
 
+    <div id="todoMessage" class="todo-message" aria-live="polite"></div>
+
     <form id="todoForm" class="todo-add-card">
       <div class="todo-form-main">
-        <input id="todoTitle" type="text" maxlength="120" placeholder="What do you want to accomplish?" autocomplete="off" required>
+        <input id="todoTitle" type="text" maxlength="120" placeholder="What goal do you want to accomplish?" autocomplete="off" required>
         <textarea id="todoNotes" maxlength="500" placeholder="Notes (optional)"></textarea>
       </div>
-      <div class="todo-form-fields">
+      <div class="todo-form-fields todo-goal-fields">
         <label>Priority<select id="todoPriority"><option value="medium">Medium</option><option value="high">High</option><option value="low">Low</option></select></label>
-        <label>Due date<input id="todoDueDate" type="date"></label>
+        <label>Duration<select id="todoDuration"><option value="day">1 Day</option><option value="week">1 Week</option><option value="month">1 Month</option><option value="year">1 Year</option><option value="custom">Custom Days</option></select></label>
+        <label>Start date<input id="todoStartDate" type="date" required></label>
+        <label id="todoCustomWrap" class="hidden">Days<input id="todoCustomDays" type="number" min="1" max="3650" value="7"></label>
         <label>Category<select id="todoCategory"><option>Study</option><option>Practice</option><option>Revision</option><option>Personal</option><option>Other</option></select></label>
-        <button id="todoAddBtn" type="submit">＋ Add Task</button>
+        <button id="todoAddBtn" type="submit">＋ Add Goal</button>
       </div>
+      <p class="todo-form-help">Choose how long the goal should run. Every calendar day gets its own saved progress, and the goal result is calculated across the full target period.</p>
     </form>
 
     <div class="todo-toolbar">
-      <div class="todo-search"><span>⌕</span><input id="todoSearch" type="search" placeholder="Search tasks..."></div>
+      <div class="todo-search"><span>⌕</span><input id="todoSearch" type="search" placeholder="Search goals..."></div>
       <div class="todo-filters">
         <button type="button" class="todo-filter active" data-filter="all">All</button>
-        <button type="button" class="todo-filter" data-filter="pending">Pending</button>
+        <button type="button" class="todo-filter" data-filter="pending">Active</button>
         <button type="button" class="todo-filter" data-filter="completed">Completed</button>
+        <button type="button" class="todo-filter" data-filter="expired">Ended</button>
         <button type="button" class="todo-filter" data-filter="high">High priority</button>
       </div>
     </div>
 
     <div id="todoList" class="todo-list"></div>
-    <div id="todoEmpty" class="todo-empty hidden"><div class="todo-empty-icon">✓</div><h3>No tasks here</h3><p>Add a task above and keep your study plan organized.</p></div>
+    <div id="todoEmpty" class="todo-empty hidden"><div class="todo-empty-icon">✓</div><h3>No goals here</h3><p>Create a goal above. Each day will have its own progress record.</p></div>
   </section>
 </main>
 

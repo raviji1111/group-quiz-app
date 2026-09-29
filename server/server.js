@@ -10,6 +10,7 @@ const playerAuthRoutes = require('./routes/playerAuth');
 const playerRoutes = require('./routes/players');
 const liveRoutes = require('./routes/live');
 const liveAnalyticsRoutes = require('./routes/liveAnalytics');
+const todoRoutes = require('./routes/todos');
 const { ensureAdmin } = require('./utils/seedAdmin');
 
 const app = express();
@@ -27,6 +28,7 @@ app.use('/api/player', playerAuthRoutes);
 app.use('/api/players', playerRoutes);
 app.use('/api/live', liveRoutes);
 app.use('/api/live-analytics', liveAnalyticsRoutes);
+app.use('/api/todos', todoRoutes);
 
 // Keep one predictable JSON error shape for API failures not handled by a route.
 app.use('/api', (req, res) => res.status(404).json({ message: 'API route not found.' }));

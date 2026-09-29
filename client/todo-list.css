@@ -81,3 +81,54 @@ body.player-dark .todo-empty h3{color:#f8fafc}
   .todo-actions{flex-direction:column}
   .todo-title-row h3{white-space:normal}
 }
+
+/* Database-backed goal + daily tracking additions */
+.hidden{display:none!important}
+.todo-message{min-height:0;margin:0 0 10px;border-radius:10px;font-size:13px;font-weight:700}
+.todo-message:not(:empty){padding:10px 12px}
+.todo-message.is-success{background:#eaf7ef;color:#267447}.todo-message.is-error{background:#fdecef;color:#b6374d}.todo-message.is-info{background:#edf3ff;color:#315fd5}
+.todo-goal-fields{grid-template-columns:1fr 1fr 1fr 1fr 1fr auto}
+.todo-form-help{margin:10px 2px 0;color:#7a8799;font-size:11px;line-height:1.5}
+.todo-goal{display:block;padding:16px}
+.todo-goal-top{display:flex;align-items:flex-start;justify-content:space-between;gap:15px}
+.todo-check-wrap{display:flex;gap:12px;min-width:0;flex:1}
+.todo-goal-icon{width:29px;height:29px;flex:0 0 29px;border:2px solid #cbd5e2;border-radius:50%;display:grid;place-items:center;color:#315fd5;font-weight:900}
+.todo-goal.is-complete .todo-goal-icon{background:#315fd5;border-color:#315fd5;color:#fff}
+.todo-goal.is-expired{border-left:3px solid #d39a32}
+.todo-goal-progress{margin:14px 0 0 41px;padding:12px 13px;background:#f7f9fc;border:1px solid #e5eaf1;border-radius:12px}
+.todo-progress-head,.todo-day-caption,.todo-today-title{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.todo-progress-head{font-size:11px;color:#64738a}.todo-progress-head strong{color:#27344a}
+.todo-goal-progress .todo-progress{height:7px;margin:8px 0 10px}
+.todo-day-caption{font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:800;color:#8490a2}
+.todo-day-track{display:flex;gap:4px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:thin}
+.todo-day{width:23px;height:23px;flex:0 0 23px;display:grid;place-items:center;border-radius:6px;background:#e7ecf3;color:#77859a;font-size:8px;font-weight:900;border:1px solid transparent}
+.todo-day.done{background:#315fd5;color:#fff}.todo-day.today{border-color:#172a4d;box-shadow:0 0 0 2px rgba(49,95,213,.12)}
+.todo-today-card{margin:10px 0 0 41px;padding:12px 13px;background:#fff;border:1px solid #e1e7ef;border-radius:12px}
+.todo-today-title{font-size:12px;color:#64738a;margin-bottom:8px}.todo-today-title strong{font-size:15px;color:#172033}
+.todo-today-controls{display:grid;grid-template-columns:minmax(100px,1fr) 62px minmax(170px,1.3fr) auto;gap:8px;align-items:center}
+.todo-day-range{width:100%;accent-color:#315fd5}.todo-day-number,.todo-day-note{box-sizing:border-box;width:100%;border:1px solid #d8e0eb;background:#fff;color:#172033;border-radius:8px;padding:9px 10px;font:inherit;font-size:12px;outline:none}
+.todo-day-note{min-width:0}.todo-save-day{border:0;border-radius:8px;padding:9px 12px;background:#172a4d;color:#fff;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
+.todo-save-day:hover{transform:translateY(-1px)}
+.todo-day-help{display:block;margin-top:7px;color:#8490a2;font-size:10px}
+body.player-dark .todo-message.is-success{background:#123222;color:#75d19a}body.player-dark .todo-message.is-error{background:#351621;color:#ff8ea1}
+body.player-dark .todo-form-help,body.player-dark .todo-day-help{color:#91a0b6}
+body.player-dark .todo-goal-progress,body.player-dark .todo-today-card{background:#0f1b2e;border-color:#2a3c57}
+body.player-dark .todo-progress-head strong,body.player-dark .todo-today-title strong{color:#f8fafc}
+body.player-dark .todo-progress-head,body.player-dark .todo-day-caption,body.player-dark .todo-today-title{color:#91a0b6}
+body.player-dark .todo-day{background:#1b2a40;color:#91a0b6}.todo-day.done{background:#3267d6;color:#fff}
+body.player-dark .todo-day-number,body.player-dark .todo-day-note{background:#0b1525;border-color:#2a3c57;color:#f8fafc}
+body.player-dark .todo-goal-icon{border-color:#42536d;color:#75a0ff}.todo-goal.is-complete .todo-goal-icon{background:#3267d6;border-color:#3267d6;color:#fff}
+
+@media(max-width:1100px){
+  .todo-goal-fields{grid-template-columns:1fr 1fr 1fr}
+  .todo-goal-fields button{width:100%}
+  .todo-today-controls{grid-template-columns:1fr 62px}
+  .todo-day-note{grid-column:1 / -1}.todo-save-day{grid-column:1 / -1}
+}
+@media(max-width:600px){
+  .todo-goal-fields{grid-template-columns:1fr}
+  .todo-goal-top{flex-direction:column}.todo-goal-top .todo-actions{flex-direction:row;margin-left:41px}
+  .todo-goal-progress,.todo-today-card{margin-left:0}
+  .todo-today-controls{grid-template-columns:1fr 62px}
+}
+.todo-day-range:disabled,.todo-day-number:disabled,.todo-day-note:disabled{opacity:.55;cursor:not-allowed}.todo-save-day:disabled{opacity:.55;cursor:not-allowed;transform:none!important}

@@ -1,12 +1,12 @@
 {
   "name": "group-quiz-app",
-  "version": "21.0.0",
+  "version": "22.0.0",
   "private": true,
   "description": "Secure group quiz application with admin authentication, MongoDB, quiz attempts and anti-cheat controls.",
   "main": "server/server.js",
   "scripts": {
-    "start": "node server/server.js",
-    "dev": "node --watch server/server.js"
+    "start": "node server/server-v22.js",
+    "dev": "node --watch server/server-v22.js"
   },
   "engines": {
     "node": ">=20"
@@ -22,4 +22,3 @@
     "pdf-parse": "^1.1.1"
   }
 }
-

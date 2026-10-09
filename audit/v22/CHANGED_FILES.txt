@@ -1,0 +1,22 @@
+ADDED FILES ONLY — original v21 files are byte-for-byte unchanged.
+
+server/server-v22.js
+server/middleware/v22RateLimit.js
+server/models/v22/AdminAuditLog.js
+server/models/v22/Notification.js
+server/models/v22/DeviceBinding.js
+server/routes/v22/enhancements.js
+server/services/v22Validation.js
+client/v22/admin-v22.html
+client/v22/admin-v22.js
+client/v22/admin-v22.css
+client/v22/device-binding.js
+tests/v22/modules.test.js
+tests/v22/source-integrity.test.js
+audit/v22/IMPLEMENTATION_NOTES.md
+audit/v22/CHANGED_FILES.txt
+audit/v22/BASELINE_SHA256.txt
+
+Run tests: node --test tests/v22/*.test.js
+Activate additive v22 server: node server/server-v22.js
+Admin Plus: /admin-v22

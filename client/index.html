@@ -1,113 +1,71 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Group Quiz Arena 3D — Live & Practice Portal</title>
-  <link rel="stylesheet" href="./style.css" />
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Group Quiz — Quiz Hub</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="reference-ui-v2.css"><link rel="stylesheet" href="todo-list.css">
 </head>
-<body>
-  <canvas id="bg-3d-canvas"></canvas>
+<body class="player-site">
+<header class="player-nav">
+  <div class="player-brand"><div class="brand-mark">GQ</div><div><strong>Group Quiz</strong><small>Test. Learn. Improve.</small></div></div>
+  <nav><button class="player-nav-btn active" data-view="home">Home</button><button class="player-nav-btn" data-view="subjects">Subjects</button><button class="player-nav-btn" data-view="live">🔴 Live Quiz</button><button class="player-nav-btn" data-view="todo">✓ Todo</button></nav>
+  <div class="player-account"><span id="accountStatus">Registration required</span><button id="themeToggle" class="theme-toggle" type="button" aria-label="Switch to dark mode">🌙</button><button id="accountBtn" class="small-btn secondary-btn">Login / Register</button></div>
+</header>
 
-  <!-- 3D Floating Navigation -->
-  <header class="navbar-3d">
-    <div class="brand-logo">
-      <span>⚡ QUIZ ARENA 3D</span>
-    </div>
-    <nav class="nav-links-3d">
-      <a href="./index.html">🎮 Live Arena</a>
-      <a href="./todo.html">✅ Study & To-Do</a>
-      <a href="./admin.html">🛡️ Admin Panel</a>
-      <button class="btn-3d" id="themeToggleBtn">🌗 Theme</button>
-      <button class="btn-3d" id="soundToggleBtn">🔊 SFX</button>
-    </nav>
-  </header>
-
-  <main class="container-3d">
-    <!-- Hero & Live Join Banner -->
-    <section class="card-3d" id="live-hero-section">
-      <span class="badge-3d">🔴 LIVE MULTIPLAYER ARENA</span>
-      <h1 style="font-size: 2rem; margin-bottom: 10px;">Join a Live Group Quiz or Practice Solo</h1>
-      <p style="color: var(--text-muted); margin-bottom: 20px;">
-        Enter your room code or player credentials below to jump into real-time 3D interactive quizzes.
-      </p>
-      <div class="grid-3d" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
-        <div>
-          <label>Player Name / ID</label>
-          <input type="text" id="playerNameInput" placeholder="Enter your name..." />
-        </div>
-        <div>
-          <label>Live Room / Session Code</label>
-          <input type="text" id="roomCodeInput" placeholder="e.g. QUIZ-2026" />
-        </div>
-        <div style="display: flex; align-items: flex-end; padding-bottom: 14px; gap: 10px;">
-          <button class="btn-3d primary" id="joinLiveBtn" style="width: 100%; justify-content: center;">
-            🚀 Join Live Quiz
-          </button>
-        </div>
+<main class="player-main">
+<section id="startScreen" class="screen active">
+  <section id="authGate" class="auth-gate">
+    <div class="auth-hero">
+      <div class="auth-copy"><span class="hero-kicker">GROUP QUIZ</span><h1>Learn. Practice.<br><em>Perform better.</em></h1><p>Create your free account first. After registration or login, your complete quiz hub, subjects, topics and live tests will appear here.</p><div class="auth-points"><span>✓ Topic-wise quizzes</span><span>✓ Live tests & leaderboard</span><span>✓ Instant results</span></div></div>
+      <div class="auth-card">
+        <span class="card-eyebrow">GET STARTED</span><h2>Register to continue</h2><p class="auth-note">Already have an account? Login below.</p>
+        <input id="accountName" type="text" placeholder="Full name" maxlength="30" autocomplete="name">
+        <input id="accountEmail" type="email" placeholder="Email address" autocomplete="email">
+        <input id="accountPassword" type="password" placeholder="Password (6+ characters)" autocomplete="new-password">
+        <div class="account-actions"><button id="registerBtn">Create Account</button><button id="loginAccountBtn" class="secondary-btn">Login</button></div>
+        <p id="accountMessage" class="admin-message"></p>
       </div>
-    </section>
-
-    <!-- Active Live Quiz & 3D Podium Grid -->
-    <div class="grid-3d">
-      <!-- Left: Question & Options Box -->
-      <section class="card-3d question-box" id="quiz-play-area" style="grid-column: span 2;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-          <span class="badge-3d" id="questionCounter">Question 1 / 10</span>
-          <span class="badge-3d" id="liveTimerBadge" style="color: #facc15; border-color: #facc15;">⏱️ 00:30</span>
-        </div>
-        <h2 id="questionText">Select a Published Quiz below or Join a Live Session to begin!</h2>
-        <div class="options-grid-3d" id="optionsContainer">
-          <button class="option-btn">A. Ready for Live Question</button>
-          <button class="option-btn">B. Instant 3D Feedback</button>
-          <button class="option-btn">C. Real-Time Leaderboard</button>
-          <button class="option-btn">D. Anti-Cheat Protected</button>
-        </div>
-        <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
-          <span id="autosaveStatus" style="color: var(--text-muted); font-size: 0.85rem;">💾 Autosave Ready</span>
-          <button class="btn-3d success" id="submitAnswerBtn">✅ Submit Answer</button>
-        </div>
-      </section>
-
-      <!-- Right: 3D Podium Leaderboard -->
-      <aside class="card-3d leaderboard-card" id="leaderboard-section">
-        <span class="badge-3d">🏆 3D LIVE PODIUM</span>
-        <h3>Top Performers</h3>
-        <div class="podium-3d" id="podiumContainer">
-          <div class="podium-pillar silver">
-            <strong>🥈 #2</strong>
-            <p id="podium2Name" style="font-size: 0.85rem; margin-top: 6px;">Player 2</p>
-          </div>
-          <div class="podium-pillar gold">
-            <strong>👑 #1</strong>
-            <p id="podium1Name" style="font-size: 0.9rem; margin-top: 6px;">Top Player</p>
-          </div>
-          <div class="podium-pillar bronze">
-            <strong>🥉 #3</strong>
-            <p id="podium3Name" style="font-size: 0.85rem; margin-top: 6px;">Player 3</p>
-          </div>
-        </div>
-        <div id="liveLeaderboardList" style="margin-top: 12px;"></div>
-      </aside>
     </div>
+  </section>
 
-    <!-- Published Quizzes Library -->
-    <section class="card-3d" style="margin-top: 24px;">
-      <span class="badge-3d">📚 PUBLISHED QUIZZES</span>
-      <h2>Available Practice & Competitive Quizzes</h2>
-      <div class="grid-3d" id="publishedQuizzesContainer"></div>
-    </section>
-  </main>
+  <div id="liveLobby" class="live-lobby hidden">
+    <div class="live-lobby-card">
+      <div class="live-lobby-badge">🔴 LIVE LOBBY</div>
+      <h2 id="liveLobbyTitle">Live Quiz</h2>
+      <p id="liveLobbyMeta">You have joined. Please wait for the quiz to start.</p>
+      <div class="live-lobby-countdown" id="liveLobbyCountdown">00:00</div>
+      <div class="live-lobby-grid">
+        <div><span>Questions</span><strong id="liveLobbyQuestions">0</strong></div>
+        <div><span>Join status</span><strong id="liveLobbyJoinStatus">Joined</strong></div>
+        <div><span>Quiz start</span><strong id="liveLobbyStartAt">--</strong></div>
+        <div><span>Live closes</span><strong id="liveLobbyEndAt">--</strong></div>
+      </div>
+      <p id="liveLobbyMessage" class="admin-message"></p>
+    </div>
+  </div>
 
-  <!-- Core App Scripts Preserved from your project -->
-  <script src="./device.js" defer></script>
-  <script src="./published.js" defer></script>
-  <script src="./live-connection.js" defer></script>
-  <script src="./live-autosave.js" defer></script>
-  <script src="./live-leaderboard.js" defer></script>
-  <script src="./live-announcements.js" defer></script>
-  <script src="./live.js" defer></script>
-  <script src="./script.js" defer></script>
-  <script src="./modern-3d-engine.js" defer></script>
-</body>
-</html>
+  <div id="quizHubContent" class="quiz-hub-content hidden">
+   
+    <section id="livePreview" class="live-preview-section"><div class="player-section-head"><div><span class="card-eyebrow live-eyebrow">LIVE NOW</span><h2>Live Quiz</h2></div><button id="refreshLiveBtn" class="secondary-btn">↻ Refresh</button></div><div id="liveCards" class="live-card-grid"></div></section>
+
+    <section class="subject-section"><div class="player-section-head"><div><span class="card-eyebrow">EXPLORE</span><h2>Subjects</h2></div><p>Choose a subject to see its topics</p></div><div id="subjectGrid" class="subject-grid"></div></section>
+    <section id="quizCatalog" class="catalog-section"><div class="player-section-head"><div><span class="card-eyebrow">QUIZZES</span><h2 id="catalogTitle">All Quizzes</h2></div><select id="quizSelect" class="player-select"><option value="">Loading quizzes...</option></select></div><div id="topicFilter" class="topic-filter"></div><div id="quizCards" class="quiz-card-grid"></div></section>
+
+    <div class="account-bar"><span id="accountStatusMirror">Signed in.</span><button id="startBtn" style="display:none" aria-hidden="true" tabindex="-1">Start Selected Quiz</button></div>
+    <input id="playerName" type="text" maxlength="30" readonly class="hidden-input">
+    <p id="playerMessage" class="admin-message"></p>
+  </div>
+</section>
+
+<section id="quizScreen" class="screen"><div class="quiz-container classy-quiz"><div class="quiz-top"><div><span class="quiz-kicker">QUIZ IN PROGRESS</span><div>Question <span id="questionNumber">1</span> / <span id="totalQuestions">0</span></div></div><div id="timer">00:00</div></div><div class="progress-container"><div id="progressBar"></div></div><div class="question-box"><div class="question-meta"><span id="quizSubjectBadge"></span><span id="quizTopicBadge"></span></div><h2 id="questionText">Question</h2></div><div id="optionsContainer" class="options"></div><button id="nextBtn" class="next-btn" disabled>Next</button><div id="violationBox" class="violation-box">Warnings: <span id="violationCount">0</span> / <span id="maxViolations">3</span></div><div id="liveScoreStrip" class="live-score-strip hidden"></div></div></section>
+
+<section id="resultScreen" class="screen"><div class="card result-card classy-result"><span class="card-eyebrow">RESULT</span><h1>Quiz Completed</h1><p id="resultPlayer">Player</p><div class="score"><span id="score">0</span> / <span id="resultTotal">0</span></div><p id="resultMessage">Good job!</p><div id="resultLiveBoard" class="result-live-board"></div><button id="restartBtn">Back to Quiz Hub</button></div></section>
+</main>
+
+<div id="warningModal" class="modal"><div class="modal-box"><h2>⚠️ Warning</h2><p id="warningMessage">Please stay in the quiz window.</p><button id="warningOkBtn">Continue Quiz</button></div></div>
+<audio id="warningSound" preload="auto"><source src="warning.mp3" type="audio/mpeg"></audio>
+<script src="live-autosave.js"></script><script src="live-leaderboard.js"></script><script src="live-result-controls.js"></script><script src="live-export.js"></script><script src="live-announcements.js"></script><script src="live-pause-resume.js"></script>
+<script src="live-connection.js"></script>
+<script src="live-monitoring.js"></script>
+<script src="script.js"></script>
+<script src="live-hero.js"></script><script src="live-discovery-fix.js"></script><script src="reference-ui-v2.js"></script>
+</body></html>

@@ -1,54 +1,159 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3D Study & To-Do Hub — Group Quiz App</title>
-  <link rel="stylesheet" href="./style.css" />
-  <link rel="stylesheet" href="./todo-list.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Group Quiz — My Todo List</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="reference-ui-v2.css">
+<link rel="stylesheet" href="todo-list.css">
 </head>
-<body>
-  <canvas id="bg-3d-canvas"></canvas>
+<body class="player-site todo-page">
+<header class="player-nav">
+  <div class="player-brand">
+    <div class="brand-mark">GQ</div>
+    <div><strong>Group Quiz</strong><small>Test. Learn. Improve.</small></div>
+  </div>
+  <nav>
+    <a class="player-nav-btn" href="index.html">Home</a>
+    <a class="player-nav-btn" href="index.html#subjects">Subjects</a>
+    <a class="player-nav-btn" href="index.html#live">🔴 Live Quiz</a>
+    <a class="player-nav-btn active" href="todo.html">✓ Todo</a>
+  </nav>
+  <div class="player-account">
+    <span id="todoAccountStatus">Checking account...</span>
+    <button id="todoThemeToggle" class="theme-toggle" type="button" aria-label="Switch theme">🌙</button>
+    <button id="todoAccountBtn" class="small-btn secondary-btn" type="button">Account</button>
+  </div>
+</header>
 
-  <header class="navbar-3d">
-    <div class="brand-logo">✅ 3D STUDY & TASK HUB</div>
-    <nav class="nav-links-3d">
-      <a href="./index.html">🎮 Quiz Arena</a>
-      <a href="./admin.html">🛡️ Admin Panel</a>
-      <button class="btn-3d" id="themeToggleBtn">🌗 Theme</button>
-    </nav>
-  </header>
-
-  <main class="container-3d">
-    <div class="grid-3d">
-      <section class="card-3d">
-        <span class="badge-3d">📝 ADD NEW STUDY TASK</span>
-        <h3>Create Daily Goal</h3>
-        <input type="text" id="todoTitleInput" placeholder="Task title (e.g., Revise Lok Sabha Notes)" />
-        <select id="todoPriorityInput">
-          <option value="high">🔥 High Priority</option>
-          <option value="medium">⚡ Medium Priority</option>
-          <option value="low">🌱 Low Priority</option>
-        </select>
-        <button class="btn-3d primary" id="addTodoBtn" style="width: 100%; justify-content: center;">
-          ➕ Add 3D Task Card
-        </button>
-      </section>
-
-      <section class="card-3d" style="grid-column: span 2;">
-        <span class="badge-3d">📊 DAILY PROGRESS & TASKS</span>
-        <h3>Your Active Study Queue</h3>
-        <div id="todoListContainer" class="grid-3d"></div>
-      </section>
+<main class="player-main todo-page-main">
+  <section id="todoSection" class="todo-section todo-page-section">
+    <div class="todo-header">
+      <div>
+        <span class="card-eyebrow">PERSONAL PRODUCTIVITY</span>
+        <h1>My Todo List</h1>
+        <p>Plan your study tasks, track progress and stay on schedule.</p>
+      </div>
+      <button id="todoRefresh" class="secondary-btn" type="button">↻ Refresh</button>
     </div>
-  </main>
 
-  <script src="./todo-security.js" defer></script>
-  <script src="./todo-task-view.js" defer></script>
-  <script src="./todo-dashboard.js" defer></script>
-  <script src="./todo-insights.js" defer></script>
-  <script src="./todo-reports.js" defer></script>
-  <script src="./todo-list.js" defer></script>
-  <script src="./modern-3d-engine.js" defer></script>
+    <section class="todo-tasks-first" aria-label="My tasks">
+      <div class="todo-tasks-first-head">
+        <div><span class="card-eyebrow">YOUR GOALS</span><h2>My Tasks</h2><p>All your created tasks are shown here. Tap a task to open its progress and today’s actions.</p></div>
+        <button id="todoOpenCreate" class="todo-create-task-btn" type="button">＋ Create Task</button>
+      </div>
+      <div class="todo-toolbar todo-toolbar-tasks">
+        <div class="todo-search"><span>⌕</span><input id="todoSearch" type="search" placeholder="Search goals..." aria-label="Search goals"></div>
+        <div class="todo-filters">
+          <button type="button" class="todo-filter active" data-filter="all">All</button>
+          <button type="button" class="todo-filter" data-filter="pending">Active</button>
+          <button type="button" class="todo-filter" data-filter="today-done">Done Today</button>
+          <button type="button" class="todo-filter" data-filter="expired">Ended</button>
+          <button type="button" class="todo-filter" data-filter="high">High priority</button>
+        </div>
+      </div>
+      <div id="todoList" class="todo-list todo-list-first"></div>
+      <div id="todoEmpty" class="todo-empty hidden"><div class="todo-empty-icon">＋</div><h3>No tasks yet</h3><p>Create your first goal using the <b>Create Task</b> button.</p><button id="todoEmptyCreate" class="todo-create-task-btn" type="button">＋ Create Task</button></div>
+    </section>
+
+    <div class="todo-today-banner">
+      <div><span class="card-eyebrow">TODAY</span><strong id="todoTodayDate">Loading today...</strong></div>
+      <div class="todo-today-banner-stats"><span><b id="todoDoneToday">0/0</b> done today</span><span><b id="todoDaysLeft">—</b> days left</span></div>
+    </div>
+
+    <div class="todo-stats">
+      <div class="todo-stat"><span>Total Tasks</span><strong id="todoTotal">0</strong></div>
+      <div class="todo-stat"><span>Active Tasks</span><strong id="todoPending">0</strong></div>
+      <div class="todo-stat"><span>Done Today</span><strong id="todoCompleted">0/0</strong></div>
+      <div class="todo-stat todo-stat-progress"><span>Today's Completion</span><strong id="todoProgress">0%</strong><div class="todo-progress"><i id="todoProgressBar"></i></div></div>
+    </div>
+
+    <div id="todoMessage" class="todo-message" aria-live="polite"></div>
+
+    <div id="todoCreateModal" class="todo-modal hidden" aria-hidden="true">
+      <div class="todo-modal-backdrop" data-close-todo-modal></div>
+      <div class="todo-modal-panel" role="dialog" aria-modal="true" aria-labelledby="todoModalTitle">
+        <div class="todo-modal-head"><div><span class="card-eyebrow">TASK BUILDER</span><h2 id="todoModalTitle">Create Task</h2></div><button id="todoCloseCreate" class="todo-modal-close" type="button" aria-label="Close">×</button></div>
+        <form id="todoForm" class="todo-add-card">
+          <div class="todo-form-main">
+            <input id="todoTitle" type="text" maxlength="120" placeholder="What goal do you want to accomplish?" autocomplete="off" required>
+            <textarea id="todoNotes" maxlength="500" placeholder="Notes (optional)"></textarea>
+          </div>
+          <div class="todo-form-fields todo-goal-fields">
+            <label>Priority<select id="todoPriority"><option value="medium">Medium</option><option value="high">High</option><option value="low">Low</option></select></label>
+            <label>Duration<select id="todoDuration"><option value="day">1 Day</option><option value="week">1 Week</option><option value="month">1 Month</option><option value="year">1 Year</option><option value="custom90">90 Days</option><option value="custom">Custom Days</option></select></label>
+            <label id="todoCustomWrap" class="hidden">Days<input id="todoCustomDays" type="number" min="1" max="3650" value="7"></label>
+            <label>Category<select id="todoCategory"><option>Study</option><option>Practice</option><option>Revision</option><option>Personal</option><option>Other</option></select></label>
+          </div>
+          <p class="todo-form-help">Every task starts today. Daily history is saved securely in the database, and previous/future dates stay locked.</p>
+          <div class="todo-modal-actions"><button id="todoCancelCreate" class="secondary-btn" type="button">Cancel</button><button id="todoAddBtn" type="submit">＋ Create Task</button></div>
+        </form>
+      </div>
+    </div>
+
+    <section class="todo-smart-dashboard" aria-label="Todo dashboard">
+      <div class="todo-smart-card"><span>Current streak</span><strong id="todoCurrentStreak">0 days</strong></div>
+      <div class="todo-smart-card"><span>Longest streak</span><strong id="todoLongestStreak">0 days</strong></div>
+      <div class="todo-smart-card"><span>7-day consistency</span><strong id="todoWeekRate">0%</strong></div>
+      <div class="todo-smart-card"><span>30-day consistency</span><strong id="todoMonthRate">0%</strong></div>
+      <div class="todo-smart-card"><span>Remaining task-days</span><strong id="todoRemainingTaskDays">0</strong></div>
+    </section>
+
+    <section class="todo-insights-card" aria-label="Today's productivity insights">
+      <div class="todo-insights-head">
+        <div><span class="card-eyebrow">PRODUCTIVITY INSIGHTS</span><h2>Today’s Focus</h2><p>See what needs attention first, without changing your saved task data.</p></div>
+        <button id="todoFocusHighBtn" class="todo-insight-action" type="button">Show high priority</button>
+      </div>
+      <div class="todo-insights-grid">
+        <div class="todo-insight-stat"><span>Pending today</span><strong id="todoInsightPending">0</strong><small>tasks still to finish</small></div>
+        <div class="todo-insight-stat"><span>High priority left</span><strong id="todoInsightHigh">0</strong><small>needs extra attention</small></div>
+        <div class="todo-insight-stat"><span>Due in 3 days</span><strong id="todoInsightDueSoon">0</strong><small>active goals approaching deadline</small></div>
+        <div class="todo-insight-stat"><span>Goals completed</span><strong id="todoInsightCompleted">0</strong><small>target duration fully completed</small></div>
+      </div>
+      <div class="todo-insight-progress"><div><span>Today’s focus progress</span><b id="todoInsightProgressText">0%</b></div><div class="todo-insight-bar"><i id="todoInsightProgressBar"></i></div></div>
+    </section>
+
+    <section class="todo-reports-card">
+      <div class="todo-report-head"><div><span class="card-eyebrow">REPORTS</span><h2>Weekly &amp; Monthly</h2></div><div class="todo-report-summary"><span id="todoWeekSummary">7-day report loading...</span><span id="todoMonthSummary">30-day report loading...</span></div></div>
+      <div class="todo-report-columns">
+        <div><h3>Last 7 days</h3><div id="todoWeekRows" class="todo-report-list"></div></div>
+        <div><h3>Last 30 days</h3><div id="todoMonthRows" class="todo-report-list todo-report-list-long"></div></div>
+      </div>
+      <div class="todo-report-foot"><span>Current streak: <b id="todoReportCurrentStreak">0 days</b></span><span>Longest streak: <b id="todoReportLongestStreak">0 days</b></span></div>
+    </section>
+
+  </section>
+</main>
+
+<script>
+(() => {
+  const player = (() => { try { return JSON.parse(localStorage.getItem('groupQuizPlayer') || 'null'); } catch (_) { return null; } })();
+  const token = localStorage.getItem('groupQuizPlayerToken');
+  if (!player || !token) { window.location.replace('index.html'); return; }
+
+  const status = document.getElementById('todoAccountStatus');
+  if (status) status.textContent = `Logged in: ${player.name || 'User'}`;
+
+  const body = document.body;
+  const themeBtn = document.getElementById('todoThemeToggle');
+  const savedTheme = localStorage.getItem('groupQuizTheme');
+  if (savedTheme === 'dark') body.classList.add('player-dark');
+  const syncTheme = () => {
+    const dark = body.classList.toggle('player-dark');
+    localStorage.setItem('groupQuizTheme', dark ? 'dark' : 'light');
+    if (themeBtn) themeBtn.textContent = dark ? '☀️' : '🌙';
+  };
+  if (themeBtn) { themeBtn.textContent = body.classList.contains('player-dark') ? '☀️' : '🌙'; themeBtn.addEventListener('click', syncTheme); }
+
+  document.getElementById('todoAccountBtn')?.addEventListener('click', () => { window.location.href = 'index.html'; });
+})();
+</script>
+<script src="todo-security.js"></script>
+<script src="todo-dashboard.js"></script>
+<script src="todo-reports.js"></script>
+<script src="todo-insights.js"></script>
+<script src="todo-task-view.js"></script>
+<script src="todo-list.js"></script>
 </body>
 </html>
